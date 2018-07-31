@@ -1,16 +1,15 @@
-package physical;
+package com.example.jrnjsyx.beepbeep.physical;
 
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
-import android.util.Log;
+
+import com.example.jrnjsyx.beepbeep.processing.Decoder;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 import java.util.Arrays;
 
-import processing.Decoder;
-import utils.FlagVar;
-
-public class PlayThread extends Thread implements FlagVar{
+public class PlayThread extends Thread implements FlagVar {
 
     /*
     This thread is used to play audio samples in PCM format

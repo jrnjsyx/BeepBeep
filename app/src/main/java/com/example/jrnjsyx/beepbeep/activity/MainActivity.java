@@ -1,21 +1,24 @@
-package com.example.jrnjsyx.beepbeep;
+package com.example.jrnjsyx.beepbeep.activity;
 
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.example.jrnjsyx.beepbeep.R;
+import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
+import com.example.jrnjsyx.beepbeep.physical.PlayThread;
+import com.example.jrnjsyx.beepbeep.processing.ADiffThread;
+import com.example.jrnjsyx.beepbeep.processing.BDiffThread;
+import com.example.jrnjsyx.beepbeep.processing.DecodThread;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import physical.AudioRecorder;
-import physical.PlayThread;
-import processing.ADiffThread;
-import processing.BDiffThread;
-import processing.DecodThread;
-import utils.FlagVar;
 
 
 public class MainActivity extends AppCompatActivity implements AudioRecorder.RecordingCallback{
@@ -45,7 +48,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     public void initParams(){
         audioRecorder.recordingCallback(this);
         decodThread = new DecodThread(myHandler);
-        decodThread.setProcessBufferSize(AudioRecorder.getBufferSize() / 2);
+        decodThread.initialize(AudioRecorder.getBufferSize() / 2);
         new Thread(decodThread).start();
         playThread.start();
         aButton.setOnClickListener(new View.OnClickListener() {
@@ -116,5 +119,14 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
             data2[i] = data[2 * i + 1];
         }
         decodThread.fillSamples(data2);
+    }
+
+    public boolean onKeyDown(int keyCode, KeyEvent event){
+        if (keyCode == KeyEvent.KEYCODE_BACK ) {
+            finish();
+            System.exit(0);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 }

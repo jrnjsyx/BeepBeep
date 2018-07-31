@@ -1,6 +1,8 @@
-package processing;
+package com.example.jrnjsyx.beepbeep.processing;
 
 import android.os.Handler;
+
+import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -45,10 +47,10 @@ public class DecodThread extends Decoder implements Runnable {
         try {
             while (isThreadRunning) {
                 if (samplesList.size() >= 2) {
-
+                    short[] buffer = new short[processBufferSize+startBeforeMaxCorr+LPreamble];
                     synchronized (samplesList) {
-                        System.arraycopy(samplesList.get(0),processBufferSize-LPreamble,bufferedSamples,0,LPreamble);
-                        System.arraycopy(samplesList.get(1),0,bufferedSamples,LPreamble,processBufferSize);
+                        System.arraycopy(samplesList.get(0),0,buffer,0,processBufferSize);
+                        System.arraycopy(samplesList.get(1),0,buffer,0,LPreamble+startBeforeMaxCorr);
 
                         samplesList.remove(0);
 
@@ -58,7 +60,7 @@ public class DecodThread extends Decoder implements Runnable {
                         mLoopCounter++;
                     }
                     //compute the fft of the bufferedSamples, it will be used twice. It's computed here to reduce time cost.
-                    float[] fft = getData1FFtFromSignals(bufferedSamples, upPreamble.length);
+                    float[] fft = JniUtils.fft(normalization(buffer),preambleCorrLen);
 
                     // 1. the first step is to check the existence of preamble either up or down
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft,upPreambleFFT);

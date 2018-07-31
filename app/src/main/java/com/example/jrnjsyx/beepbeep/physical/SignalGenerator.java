@@ -1,7 +1,7 @@
-package physical;
+package com.example.jrnjsyx.beepbeep.physical;
 
 
-import utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 public class SignalGenerator implements FlagVar {
 

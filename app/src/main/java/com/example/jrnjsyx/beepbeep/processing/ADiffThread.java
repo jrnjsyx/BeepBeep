@@ -1,10 +1,10 @@
-package processing;
+package com.example.jrnjsyx.beepbeep.processing;
 
 import android.os.Handler;
 import android.os.Message;
 
-import physical.AudioRecorder;
-import utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 
 public class ADiffThread implements Runnable{
