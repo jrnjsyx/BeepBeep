@@ -4,17 +4,19 @@ import java.math.BigDecimal;
 
 public interface FlagVar {
 
-    public int Fs = 48000;
+    int Fs = 48000;
 
-    public int bufferSize = 20480;
-    public float TPreamble = 0.04f;
-    public int BPreamble = 4000;
-    public int Fmin = 17500;
-    public int Fmax = 21500;
+    int bufferSize = 20480;
+    float tChrip = 0.04f;
+    int bChirp = 4000;
+//    int Fmin = 17500;
+//    int Fmax = 21500;
+    int Fmin = 11000;
+    int Fmax = 15000;
 
 
 
-    int LPreamble = (int)(new BigDecimal(TPreamble*Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
+    int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
 
     int startBeforeMaxCorr = 200;
     int endBeforeMaxCorr = 0;
@@ -32,9 +34,11 @@ public interface FlagVar {
     int DETECT_TYPE4 = 4;
     int speedOffset = 0;
     int micUsed = MIC_UP;
-    int preambleDetectionType = DETECT_TYPE1;
+    int chirpDetectionType = DETECT_TYPE1;
 
-    float maxAvgRatioThreshold = 8f;
+    float maxAvgRatioThreshold = 6f;
     float ratioThreshold = 9;
     float ratioAvailableThreshold = 0.4f;
+
+    int PORT = 34567;
 }

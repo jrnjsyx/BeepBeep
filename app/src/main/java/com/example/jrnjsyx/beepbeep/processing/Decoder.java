@@ -1,34 +1,26 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
-import android.os.Message;
-
 import com.example.jrnjsyx.beepbeep.physical.SignalGenerator;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
-import org.jtransforms.fft.FloatFFT_1D;
-
-import java.util.LinkedList;
-import java.util.List;
-
-
-import static android.icu.lang.UCharacter.GraphemeClusterBreak.L;
+import java.util.Arrays;
 
 public class Decoder implements FlagVar {
 
-    public static short[] upPreamble = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.TPreamble, FlagVar.BPreamble, FlagVar.Fmin);
-    public static short[] downPreamble = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.TPreamble, FlagVar.BPreamble, FlagVar.Fmax);
+    public static short[] upChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.Fmin);
+    public static short[] downChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.Fmax);
 
 
     // create variables to store the samples in case frequent new and return
 
     public int processBufferSize = 4096;
 
-    public int preambleCorrLen = getFFTLen(processBufferSize+LPreamble,LPreamble);
+    public int chirpCorrLen = getFFTLen(processBufferSize+ lChirp, lChirp);
 
     //we calculate the fft before decoding in order to reduce computation time.
-    public float[] upPreambleFFT;
-    public float[] downPreambleFFT;
+    public float[] upChirpFFT;
+    public float[] downChirpFFT;
     public float[][] upSymbolFFTs;
     public float[][] downSymbolFFTs;
     protected float maRatio;
@@ -39,14 +31,14 @@ public class Decoder implements FlagVar {
 
     public void initialize(int processBufferSize){
         this.processBufferSize = processBufferSize;
-        preambleCorrLen = getFFTLen(processBufferSize+LPreamble+startBeforeMaxCorr,LPreamble);
+        chirpCorrLen = getFFTLen(processBufferSize+ lChirp +startBeforeMaxCorr, lChirp);
 
         //compute the fft of the preambles and symbols to reduce the computation cost;
-        upPreambleFFT = new float[preambleCorrLen];
-        downPreambleFFT = new float[preambleCorrLen];
+        upChirpFFT = new float[chirpCorrLen];
+        downChirpFFT = new float[chirpCorrLen];
 
-        upPreambleFFT = JniUtils.fft(normalization(upPreamble),preambleCorrLen);
-        downPreambleFFT = JniUtils.fft(normalization(downPreamble),preambleCorrLen);
+        upChirpFFT = JniUtils.fft(normalization(upChirp), chirpCorrLen);
+        downChirpFFT = JniUtils.fft(normalization(downChirp), chirpCorrLen);
 
 
 
@@ -97,7 +89,7 @@ public class Decoder implements FlagVar {
         //compute the corr
         float[] corr = JniUtils.xcorr(data1,data2);
 
-        if(preambleDetectionType >= DETECT_TYPE1 && preambleDetectionType <= DETECT_TYPE3) {
+        if(chirpDetectionType >= DETECT_TYPE1 && chirpDetectionType <= DETECT_TYPE3) {
             IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
             //compute the fit vals
             float[] fitVals = getFitValsFromCorr(corr);
@@ -105,6 +97,11 @@ public class Decoder implements FlagVar {
             int index = getFitPos(fitVals, corr);
             indexMaxVarInfo.index = index;
             indexMaxVarInfo.fitVal = fitVals[index];
+            if(index == 0 ){
+                System.out.println();
+                System.out.println("corr:"+corr.length+" "+Arrays.toString(corr));
+                System.out.println("fitVals:"+fitVals.length+" "+Arrays.toString(fitVals));
+            }
 
             //detect whether the chirp signal exists.
             IndexMaxVarInfo resultInfo = preambleDetection(corr, indexMaxVarInfo);
@@ -160,7 +157,7 @@ public class Decoder implements FlagVar {
      * @return fitVals
      */
     public float[] getFitValsFromCorr(float [] corr){
-        float[] fitVals = new float[processBufferSize+LPreamble+startBeforeMaxCorr];
+        float[] fitVals = new float[processBufferSize+ lChirp +startBeforeMaxCorr];
         float val = 0;
         for(int i=0;i<startBeforeMaxCorr-endBeforeMaxCorr;i++){
             val += corr[i];
@@ -173,9 +170,9 @@ public class Decoder implements FlagVar {
         }
         for(int i=startBeforeMaxCorr;i<fitVals.length;i++){
             fitVals[i] = corr[i]*(startBeforeMaxCorr-endBeforeMaxCorr)/fitVals[i];
-            if(preambleDetectionType == FlagVar.DETECT_TYPE2){
+            if(chirpDetectionType == FlagVar.DETECT_TYPE2){
                 fitVals[i] = fitVals[i]*corr[i];
-            }else if(preambleDetectionType == FlagVar.DETECT_TYPE3){
+            }else if(chirpDetectionType == FlagVar.DETECT_TYPE3){
                 fitVals[i] = fitVals[i]*corr[i]*corr[i];
             }
         }
@@ -229,9 +226,9 @@ public class Decoder implements FlagVar {
         best method considering the fitVals and the corr.
          */
         maRatio = indexMaxVarInfo.fitVal;
-        if(preambleDetectionType == FlagVar.DETECT_TYPE2){
+        if(chirpDetectionType == FlagVar.DETECT_TYPE2){
             maRatio = maRatio/corr[indexMaxVarInfo.index];
-        }else if(preambleDetectionType == FlagVar.DETECT_TYPE3){
+        }else if(chirpDetectionType == FlagVar.DETECT_TYPE3){
             maRatio = maRatio/corr[indexMaxVarInfo.index]/corr[indexMaxVarInfo.index];
         }
         ratio = (float) (maRatio*Math.log(corr[indexMaxVarInfo.index]+1));

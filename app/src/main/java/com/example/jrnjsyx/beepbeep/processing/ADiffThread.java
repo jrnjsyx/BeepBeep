@@ -20,6 +20,11 @@ public class ADiffThread implements Runnable{
     @Override
     public void run() {
         while (decodThread.sampleCnts.size() < 2) {
+            try {
+                Thread.sleep(1);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
         int sampleDiff = 0;
         synchronized (decodThread.sampleCnts) {

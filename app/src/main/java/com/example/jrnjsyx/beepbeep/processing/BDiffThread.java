@@ -25,9 +25,19 @@ public class BDiffThread implements Runnable {
         decodThread.decodeStart();
         audioRecorder.startRecord();
         while (decodThread.sampleCnts.size() < 1){
+            try {
+                Thread.sleep(1);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
         playThread.omitChirpSignal();
         while (decodThread.sampleCnts.size() < 2){
+            try {
+                Thread.sleep(1);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
         int sampleDiff = 0;
         synchronized (decodThread.sampleCnts){
