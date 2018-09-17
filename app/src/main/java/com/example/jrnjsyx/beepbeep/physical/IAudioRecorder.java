@@ -1,4 +1,4 @@
-package physical;
+package com.example.jrnjsyx.beepbeep.physical;
 
 /**
  * Created by cc on 2016/10/13.

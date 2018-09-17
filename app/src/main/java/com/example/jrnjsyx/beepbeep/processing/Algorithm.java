@@ -1,4 +1,4 @@
-package processing;
+package com.example.jrnjsyx.beepbeep.processing;
 
 /**
  * Created by cc on 2017/11/29.
@@ -58,10 +58,10 @@ public class Algorithm {
     public static IndexMaxVarInfo getMaxInfo(float s[], int low, int high){
         IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
         indexMaxVarInfo.index = low;
-        indexMaxVarInfo.maxVar = s[low];
+        indexMaxVarInfo.fitVal = s[low];
         for(int i = low; i < high; i++){
-            if(s[i] > indexMaxVarInfo.maxVar){
-                indexMaxVarInfo.maxVar = s[i];
+            if(s[i] > indexMaxVarInfo.fitVal){
+                indexMaxVarInfo.fitVal = s[i];
                 indexMaxVarInfo.index = i;
             }
         }
@@ -78,10 +78,10 @@ public class Algorithm {
     public static IndexMaxVarInfo getMaxInfo(short s[], int low, int high){
         IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
         indexMaxVarInfo.index = low;
-        indexMaxVarInfo.maxVar = s[low];
+        indexMaxVarInfo.fitVal = s[low];
         for(int i = low; i < high; i++){
-            if(s[i] > indexMaxVarInfo.maxVar){
-                indexMaxVarInfo.maxVar = s[i];
+            if(s[i] > indexMaxVarInfo.fitVal){
+                indexMaxVarInfo.fitVal = s[i];
                 indexMaxVarInfo.index = i;
             }
         }

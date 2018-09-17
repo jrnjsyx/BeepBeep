@@ -1,16 +1,15 @@
-package physical;
+package com.example.jrnjsyx.beepbeep.physical;
 
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
-import android.util.Log;
+
+import com.example.jrnjsyx.beepbeep.processing.Decoder;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 import java.util.Arrays;
 
-import processing.Decoder;
-import utils.FlagVar;
-
-public class PlayThread extends Thread implements FlagVar{
+public class PlayThread extends Thread implements FlagVar {
 
     /*
     This thread is used to play audio samples in PCM format
@@ -21,6 +20,7 @@ public class PlayThread extends Thread implements FlagVar{
     private int validBufferLenght = 0;
     private int minBufferSize = 0;
     private short[] buffer;
+    private short[] buffer0;
 
     private final String TAG = "PlayThread";
 
@@ -28,6 +28,8 @@ public class PlayThread extends Thread implements FlagVar{
     // init the data
         // create a large buffer to store the waveform samples
         buffer = new short[FlagVar.bufferSize];
+        buffer0 = new short[FlagVar.bufferSize];
+        Arrays.fill(buffer0, (short)(0));
     }
 
     /**
@@ -71,11 +73,13 @@ public class PlayThread extends Thread implements FlagVar{
                 minBufferSize,
                 AudioTrack.MODE_STREAM);
 
+        audiotrack.play();
         while (isRunning){
             if(isBufferReady){
                 isBufferReady = false;
-                audiotrack.play();
                 audiotrack.write(buffer,0,validBufferLenght);
+            }else{
+                audiotrack.write(buffer0,0,validBufferLenght);
             }
         }
 
@@ -89,11 +93,11 @@ public class PlayThread extends Thread implements FlagVar{
     /*
     shut down the thread
      */
-    public void close(){
+    public void stopRunning(){
         isRunning = false;
     }
 
     public void omitChirpSignal() {
-        fillBufferAndPlay(Decoder.upPreamble);
+        fillBufferAndPlay(Decoder.upChirp);
     }
 }
