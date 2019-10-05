@@ -34,15 +34,14 @@
             android:layout_height="wrap_content"
             android:id="@+id/connect_button"
             android:text="connect"
-            android:enabled="false"
-            android:textColor="@color/grey"/>
+            android:enabled="true"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/connect_ready_button"
             android:enabled="false"
-            android:text="connect ready?"/>
+            android:text="send test info"/>
 
     </LinearLayout>
 

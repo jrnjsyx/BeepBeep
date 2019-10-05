@@ -136,6 +136,7 @@ public class SendFileActivity extends AppCompatActivity implements DirectActionL
 
                 @Override
                 public void onFailure(int reason) {
+                    Log.e(TAG, "connect onFailure");
                     showToast("连接失败 " + reason);
                 }
             });
@@ -203,12 +204,12 @@ public class SendFileActivity extends AppCompatActivity implements DirectActionL
                 mWifiP2pManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                        showToast("Success");
+                        showToast("search wifip2p Success");
                     }
 
                     @Override
                     public void onFailure(int reasonCode) {
-                        showToast("Failure");
+                        showToast("search wifip2p Failure");
                     }
                 });
                 return true;

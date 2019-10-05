@@ -1,6 +1,7 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
 import com.example.jrnjsyx.beepbeep.physical.SignalGenerator;
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
@@ -98,9 +99,9 @@ public class Decoder implements FlagVar {
             indexMaxVarInfo.index = index;
             indexMaxVarInfo.fitVal = fitVals[index];
             if(index == 0 ){
-                System.out.println();
-                System.out.println("corr:"+corr.length+" "+Arrays.toString(corr));
-                System.out.println("fitVals:"+fitVals.length+" "+Arrays.toString(fitVals));
+                Common.println("");
+                Common.println("corr:"+corr.length+" "+Arrays.toString(corr));
+                Common.println("fitVals:"+fitVals.length+" "+Arrays.toString(fitVals));
             }
 
             //detect whether the chirp signal exists.
@@ -110,7 +111,7 @@ public class Decoder implements FlagVar {
             IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,corr.length-1);
             float mean = Algorithm.meanValue(corr,info.index-startBeforeMaxCorr,info.index-endBeforeMaxCorr-1);
             maRatio = info.fitVal/mean;
-            System.out.println("index:"+info.index+"   maRatio:"+maRatio+"   maxCorr:"+corr[info.index]);
+            Common.println("index:"+info.index+"   maRatio:"+maRatio+"   maxCorr:"+corr[info.index]);
             if(isIndexAvailable(info)){
 
                 if((maRatio>maxAvgRatioThreshold)) {
@@ -235,7 +236,7 @@ public class Decoder implements FlagVar {
         if(maRatio > maxAvgRatioThreshold && ratio > ratioThreshold && isIndexAvailable(indexMaxVarInfo)) {
             indexMaxVarInfo.isReferenceSignalExist = true;
         }
-        System.out.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+maxAvgRatioThreshold+"  rThreshold:"+ratioThreshold);
+        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+maxAvgRatioThreshold+"  rThreshold:"+ratioThreshold);
         return indexMaxVarInfo;
     }
 

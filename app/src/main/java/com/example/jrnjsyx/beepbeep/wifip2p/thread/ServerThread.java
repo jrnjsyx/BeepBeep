@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Process;
 
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 import java.io.BufferedReader;
@@ -15,9 +16,10 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class ServerThread extends Thread {
+public class ServerThread extends WifiP2pThread {
 
     private boolean isRunning = true;
+    private boolean isAccepting = true;
 
     private Handler mHandler;
     private WriteInfo writeInfo;
@@ -31,6 +33,7 @@ public class ServerThread extends Thread {
     private ServerSocket serverSocket;
     private Socket socket;
 
+
     private long writeReadInterval = 20000;
 
 
@@ -38,9 +41,20 @@ public class ServerThread extends Thread {
         this.mHandler = mHandler;
         writeInfo = new WriteInfo();
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        try{
+            serverSocket = new ServerSocket();
+            serverSocket.setReuseAddress(true);
+            if(!serverSocket.isBound()) {
+                serverSocket.bind(new InetSocketAddress(FlagVar.PORT));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        Common.println("server create");
     }
-
+    @Override
     public void setStr(String str) {
+        Common.println("server thread setStr");
         synchronized (writeInfo){
             writeInfo.hasData = true;
             writeInfo.str = str;
@@ -50,11 +64,12 @@ public class ServerThread extends Thread {
     public void run(){
         super.run();
         try {
-            serverSocket = new ServerSocket();
-            serverSocket.setReuseAddress(true);
-            serverSocket.bind(new InetSocketAddress(FlagVar.PORT));
-            socket = serverSocket.accept();
 
+            socket = serverSocket.accept();
+            Common.println("--------accept 1--------");
+            this.sleep(100);
+            socket = serverSocket.accept();
+            Common.println("--------accept 2--------");
             inputStream = socket.getInputStream();
             inputStreamReader =new InputStreamReader(inputStream);
             bufferedReader  = new BufferedReader(inputStreamReader);
@@ -63,26 +78,31 @@ public class ServerThread extends Thread {
             String info = null;
             while (isRunning ) {
 
-                while (isPausing){
-                    sleep(0,(int)writeReadInterval);
+//                    if(!socket.isClosed() && socket.isConnected()){
+//                        System.out.println("server 正在连接中。");
+//                    }
+                while (isPausing) {
+                    sleep(0, (int) writeReadInterval);
                 }
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
-                    System.out.println(info);
+                    Common.println(info);
                     Message msg = new Message();
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
-                synchronized (writeInfo) {
-                    if (writeInfo.hasData == true) {
+
+                if (writeInfo.hasData == true) {
+                    synchronized (writeInfo) {
                         writeInfo.hasData = false;
-                        printWriter.println(writeInfo.str);
+                        printWriter.write(writeInfo.str + "\n");
                         printWriter.flush();
-                        System.out.println(writeInfo.str);
+                        Common.println(writeInfo.str);
                     }
                 }
-                sleep(0,(int)writeReadInterval);
+                sleep(0, (int) writeReadInterval);
             }
         }catch (Exception e){
+            isAccepting = false;
             isRunning = false;
             e.printStackTrace();
         }finally {
@@ -91,8 +111,10 @@ public class ServerThread extends Thread {
 
     }
 
+    @Override
     public void stopRunning(){
         isRunning = false;
+        Common.println("server thread stop running");
 
     }
 

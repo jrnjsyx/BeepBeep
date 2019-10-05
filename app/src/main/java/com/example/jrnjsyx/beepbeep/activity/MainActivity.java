@@ -1,6 +1,5 @@
 package com.example.jrnjsyx.beepbeep.activity;
 
-import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,9 +23,12 @@ import com.example.jrnjsyx.beepbeep.R;
 import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
 import com.example.jrnjsyx.beepbeep.physical.PlayThread;
 import com.example.jrnjsyx.beepbeep.processing.DecodThread;
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.wifip2p.DirectActionListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.DirectBroadcastReceiver;
+import com.example.jrnjsyx.beepbeep.wifip2p.thread.ConnetJudgeThread;
+import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ClientThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ServerThread;
 
@@ -71,12 +73,12 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     private AudioRecorder audioRecorder = new AudioRecorder();
     private PlayThread playThread = new PlayThread();
     private DecodThread decodThread;
-    private ServerThread serverThread;
-    private ClientThread clientThread;
+    private WifiP2pThread serverThread;
+    private WifiP2pThread clientThread;
+    private WifiP2pThread currentP2pThread;
+    private ConnetJudgeThread connetJudgeThread;
 
-    private boolean aPressed = false;
-    private boolean bPressed = false;
-    private boolean bConnectionPressed = false;
+    private WifiP2pInfo wifiP2pInfo;
 
 
     @Override
@@ -95,14 +97,13 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.a_button: {
-                    if(aPressed == false){
-                        aPressed = true;
+                    //判断a按钮是否按下
+                    if(bButton.isEnabled() == true){
                         bButton.setEnabled(false);
                         afterAorBPress();
 
                     }else{
                         afterAandBUnpressed();
-                        aPressed = false;
                         bButton.setEnabled(true);
 
                     }
@@ -117,12 +118,11 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
                     break;
                 }
                 case R.id.b_button: {
-                    if(bPressed == false){
-                        bPressed = true;
+                    //判断b按钮是否按下
+                    if(aButton.isEnabled() == true){
                         aButton.setEnabled(false);
                         afterAorBPress();
                     }else{
-                        bPressed = false;
                         aButton.setEnabled(true);
                         afterAandBUnpressed();
                     }
@@ -133,43 +133,26 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
                     break;
                 }
                 case R.id.connect_button: {
-                    if(aPressed == true){
-                        startActivityForResult(new Intent(MainActivity.this, SendFileActivity.class),2);
-                    }
-                    else if(bPressed == true){
-                        if(bConnectionPressed == false){
-                            bConnectionPressed = true;
-                            connectButton.setText("disconnect");
-                            connectButton.setTextColor(Color.RED);
-                            createGroup();
-                        }else{
-                            bConnectionPressed = false;
-                            connectButton.setText("connect");
-                            connectButton.setTextColor(Color.GREEN);
-                            if(serverThread != null) {
-                                serverThread.stopRunning();
-                                serverThread = null;
-                            }
-                            removeGroup();
-                        }
-
-                    }
+                    afterConnectButtonPress();
                     break;
                 }
                 case R.id.connect_ready_button: {
-
-                    if(aPressed == true){
-                        if(clientThread != null){
+                    //假如a按下
+                    if(bButton.isEnabled() == false){
+                        if(currentP2pThread != null){
                             aCnt++;
-                            clientThread.setStr("a pressed "+aCnt);
+                            currentP2pThread.setStr("a pressed "+aCnt);
+                            Common.println("a pressed");
                         }else{
                             showToast("not connected");
                         }
-
-                    }else if(bPressed == true){
-                        if(serverThread != null){
+                    }
+                    //假如b按下
+                    else if(aButton.isEnabled() == false){
+                        if(currentP2pThread != null){
                             bCnt++;
-                            serverThread.setStr("b pressed "+bCnt);
+                            currentP2pThread.setStr("b pressed "+bCnt);
+                            Common.println("b pressed");
                         }else{
                             showToast("not connected");
                         }
@@ -184,9 +167,8 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         }
     };
 
+    //初始化参数
     public void initParams(){
-
-
         audioRecorder.recordingCallback(this);
         decodThread = new DecodThread(myHandler);
         decodThread.initialize(AudioRecorder.getBufferSize() / 2);
@@ -198,43 +180,66 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         connectButton.setOnClickListener(onClickListener);
         connectReadyButton.setOnClickListener(onClickListener);
 
-
-
-
         wifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(this, getMainLooper(), this);
         broadcastReceiver = new DirectBroadcastReceiver(wifiP2pManager, channel, this);
         registerReceiver(broadcastReceiver, DirectBroadcastReceiver.getIntentFilter());
+  }
+
+    private void afterConnectButtonPress(){
+        wifiP2pManager.requestConnectionInfo(channel,new WifiP2pManager.ConnectionInfoListener(){
+
+            @Override
+            public void onConnectionInfoAvailable(WifiP2pInfo info) {
+                if(info.groupOwnerAddress == null){
+
+                    if (wifiP2pManager != null && channel != null) {
+                        startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS));
+                        showToast("请在wifi设置中，设置wifi直连对象。");
+                    } else {
+                        showToast("当前设备不支持Wifi直连");
+                    }
+                }
+                else {
+                    wifiP2pInfo = info;
+
+                    if (info.isGroupOwner && info.groupFormed) {
+                        serverThread = new ServerThread(myHandler);
+                        serverThread.start();
+                        currentP2pThread = serverThread;
+                        showToast("服务端连接已打开。");
+                        connectButton.setEnabled(false);
+                    } else {
+
+                        connetJudgeThread = new ConnetJudgeThread(info.groupOwnerAddress.getHostAddress(), FlagVar.PORT);
+                        connetJudgeThread.start();
+                        connectButton.setEnabled(false);
+                        while (!connetJudgeThread.isHostConnectable()) {
+                            showToast("正在等待服务端连接打开。");
+                            try {
+                                Thread.currentThread().sleep(1000);
+                            } catch (Exception e) {
+                                Log.e(TAG, e.toString());
+                            }
+                        }
+
+                        clientThread = new ClientThread(myHandler, wifiP2pInfo.groupOwnerAddress.getHostAddress());
+                        clientThread.start();
+                        currentP2pThread = clientThread;
+                        showToast("客户端连接已打开。");
+
+                    }
+                }
+            }
+        });
     }
 
     private void afterAorBPress(){
-        connectButton.setEnabled(true);
         connectReadyButton.setEnabled(true);
-        connectButton.setTextColor(Color.GREEN);
     }
 
     private void afterAandBUnpressed(){
         connectReadyButton.setEnabled(false);
-        connectButton.setEnabled(false);
-        bConnectionPressed = false;
-        connectButton.setText("connect");
-        connectButton.setTextColor(Color.GRAY);
-        if(bConnectionPressed == true) {
-            removeGroup();
-        }
-        if(aPressed == true){
-            if(SendFileActivity.instance != null) {
-                SendFileActivity.instance.disconnectOutside();
-            }
-        }
-        if(serverThread != null) {
-            serverThread.stopRunning();
-            serverThread = null;
-        }
-        if(clientThread != null) {
-            clientThread.stopRunning();
-            clientThread = null;
-        }
 
     }
 
@@ -313,20 +318,20 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     }
 
     public static String getDeviceStatus(int deviceStatus) {
-        switch (deviceStatus) {
-            case WifiP2pDevice.AVAILABLE:
-                return "可用的";
-            case WifiP2pDevice.INVITED:
-                return "邀请中";
-            case WifiP2pDevice.CONNECTED:
-                return "已连接";
-            case WifiP2pDevice.FAILED:
-                return "失败的";
-            case WifiP2pDevice.UNAVAILABLE:
-                return "不可用的";
-            default:
-                return "未知";
-        }
+            switch (deviceStatus) {
+                case WifiP2pDevice.AVAILABLE:
+                    return "可用的";
+                case WifiP2pDevice.INVITED:
+                    return "邀请中";
+                case WifiP2pDevice.CONNECTED:
+                    return "已连接";
+                case WifiP2pDevice.FAILED:
+                    return "失败的";
+                case WifiP2pDevice.UNAVAILABLE:
+                    return "不可用的";
+                default:
+                    return "未知";
+            }
     }
 
     private void showToast(String message) {
@@ -340,27 +345,17 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
 
     @Override
     public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-        Log.e(TAG, "onConnectionInfoAvailable");
-        Log.e(TAG, "isGroupOwner：" + wifiP2pInfo.isGroupOwner);
-        Log.e(TAG, "groupFormed：" + wifiP2pInfo.groupFormed);
-        if (wifiP2pInfo.groupFormed && wifiP2pInfo.isGroupOwner) {
-            if(serverThread == null){
-                serverThread = new ServerThread(myHandler);
-            }
-            if(!serverThread.isAlive()){
-                serverThread.start();
-            }
 
-        }
     }
 
     @Override
     public void onDisconnection() {
-        Log.e(TAG, "onDisconnection");
-        if(serverThread != null) {
-            serverThread.stopRunning();
-            serverThread = null;
-        }
+        connectButton.setEnabled(true);
+        currentP2pThread.stopRunning();
+        currentP2pThread = null;
+        serverThread = null;
+        clientThread = null;
+
     }
 
     @Override
@@ -381,33 +376,33 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(broadcastReceiver);
-        removeGroup();
-        if(serverThread != null) {
-            serverThread.stopRunning();
-        }
-        if(clientThread != null) {
-            clientThread.stopRunning();
-        }
-        if(decodThread != null){
-            decodThread.stopRunning();
-        }
+//        unregisterReceiver(broadcastReceiver);
+//        removeGroup();
+//        if(serverThread != null) {
+//            serverThread.stopRunning();
+//        }
+//        if(clientThread != null) {
+//            clientThread.stopRunning();
+//        }
+//        if(decodThread != null){
+//            decodThread.stopRunning();
+//        }
 
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == 2 && resultCode == 1)
-        {
-            WifiP2pInfo wifiP2pInfo = data.getParcelableExtra("wifiP2pInfo");
-            if(clientThread != null){
-                clientThread.stopRunning();
-            }
-            clientThread = new ClientThread(myHandler,wifiP2pInfo);
-            clientThread.start();
-
-        }
+//        super.onActivityResult(requestCode, resultCode, data);
+//        if(requestCode == 2 && resultCode == 1)
+//        {
+//            WifiP2pInfo wifiP2pInfo = data.getParcelableExtra("wifiP2pInfo");
+//            if(clientThread != null){
+//                clientThread.stopRunning();
+//            }
+//            clientThread = new ClientThread(myHandler,wifiP2pInfo);
+//            clientThread.start();
+//
+//        }
     }
 }
