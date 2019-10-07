@@ -1,12 +1,12 @@
 package com.example.jrnjsyx.beepbeep.wifip2p.thread;
 
-import android.net.wifi.p2p.WifiP2pInfo;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Process;
 
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -61,16 +61,20 @@ public class ClientThread extends WifiP2pThread{
             inputStream = socket.getInputStream();
             inputStreamReader = new InputStreamReader(inputStream);
             bufferedReader = new BufferedReader(inputStreamReader);
-
             String info = null;
             long cnt = 0;
             while (isRunning) {
 
-                if(!socket.isClosed() && socket.isConnected()){
-                    System.out.println("client 正在连接中。");
-                }
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
-                    Common.println(info);
+                    Common.println("client:"+info);
+                    synchronized (listeners) {
+                        for (NetworkMsgListener listener : listeners.values()) {
+                            listener.handleMsg(info);
+                        }
+                        for(String str:listenersToBeRemoved){
+                            listeners.remove(str);
+                        }
+                    }
                     Message msg = new Message();
                     msg.obj = info;
                     mHandler.sendMessage(msg);
@@ -96,6 +100,9 @@ public class ClientThread extends WifiP2pThread{
             e.printStackTrace();
         }
         finally {
+            Message msg = new Message();
+            msg.obj = FlagVar.connectionThreadEndStr;
+            mHandler.sendMessage(msg);
             close();
         }
     }
@@ -151,8 +158,5 @@ public class ClientThread extends WifiP2pThread{
         Common.println("client thread stop running");
     }
 
-    private class WriteInfo{
-        public boolean hasData = false;
-        public String str;
-    }
+
 }

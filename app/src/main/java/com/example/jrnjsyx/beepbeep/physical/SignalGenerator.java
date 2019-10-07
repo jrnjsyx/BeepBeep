@@ -3,7 +3,7 @@ package com.example.jrnjsyx.beepbeep.physical;
 
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
-public class SignalGenerator implements FlagVar {
+public class SignalGenerator  {
 
     /**
      * generate up chirp signal

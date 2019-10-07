@@ -1,25 +1,26 @@
-package com.example.jrnjsyx.beepbeep.processing;
+package com.example.jrnjsyx.beepbeep.processing.thread;
 
 import android.os.Handler;
 import android.os.Message;
 
 import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
+import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 
 public class ADiffThread implements Runnable{
-    private DecodThread decodThread;
+    private DecodeThread decodeThread;
     private Handler handler;
     private AudioRecorder audioRecorder;
-    public ADiffThread(DecodThread decodThread, AudioRecorder audioRecorder, Handler handler){
-        this.decodThread = decodThread;
+    public ADiffThread(DecodeThread decodeThread, AudioRecorder audioRecorder, Handler handler){
+        this.decodeThread = decodeThread;
         this.handler = handler;
         this.audioRecorder = audioRecorder;
     }
 
     @Override
     public void run() {
-        while (decodThread.sampleCnts.size() < 2) {
+        while (decodeThread.lowChirpPos.size() < 2) {
             try {
                 Thread.sleep(1);
             }catch (Exception e){
@@ -27,8 +28,8 @@ public class ADiffThread implements Runnable{
             }
         }
         int sampleDiff = 0;
-        synchronized (decodThread.sampleCnts) {
-            sampleDiff = decodThread.sampleCnts.get(1) - decodThread.sampleCnts.get(0);
+        synchronized (decodeThread.lowChirpPos) {
+            sampleDiff = decodeThread.lowChirpPos.get(1) - decodeThread.lowChirpPos.get(0);
         }
         Message msg = new Message();
         msg.arg1 = sampleDiff;

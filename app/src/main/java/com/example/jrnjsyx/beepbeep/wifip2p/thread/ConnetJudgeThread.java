@@ -1,15 +1,22 @@
 package com.example.jrnjsyx.beepbeep.wifip2p.thread;
 
+import android.app.Application;
+import android.net.wifi.p2p.WifiP2pManager;
+import android.widget.Toast;
+
 import com.example.jrnjsyx.beepbeep.utils.Common;
+import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 
 public class ConnetJudgeThread extends Thread{
 
     private boolean isHostConnectable;
     private String host;
     private int port;
-    public ConnetJudgeThread(String host, int port){
+    private NetworkMsgListener listener;
+    public ConnetJudgeThread(String host, int port,NetworkMsgListener listener){
         this.host = host;
         this.port = port;
+        this.listener = listener;
         isHostConnectable = false;
     }
 
@@ -22,6 +29,7 @@ public class ConnetJudgeThread extends Thread{
                 e.printStackTrace();
             }
         }
+        listener.handleMsg(null);
     }
 
     public boolean isHostConnectable(){

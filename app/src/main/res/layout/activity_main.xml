@@ -5,6 +5,8 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:id="@+id/main_linear"
+    android:clickable="true"
     tools:context=".activity.MainActivity">
 
     <LinearLayout
@@ -15,13 +17,16 @@
             android:id="@+id/a_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="phone A"/>
+            android:text="phone A"
+            android:enabled="false"
+            />
 
         <Button
             android:id="@+id/b_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="phone B"
+            android:enabled="false"
             />
 
     </LinearLayout>
@@ -34,7 +39,7 @@
             android:layout_height="wrap_content"
             android:id="@+id/connect_button"
             android:text="connect"
-            android:enabled="true"/>
+            android:enabled="false"/>
 
         <Button
             android:layout_width="wrap_content"
@@ -65,10 +70,11 @@
 
 
     <Button
-        android:id="@+id/omit_button"
+        android:id="@+id/start_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="发出chirp信号"
+        android:text="start"
+        android:enabled="false"
         />
 
     <TextView

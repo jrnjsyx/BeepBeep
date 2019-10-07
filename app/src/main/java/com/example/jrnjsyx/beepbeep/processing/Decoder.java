@@ -5,25 +5,21 @@ import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
-import java.util.Arrays;
+public class Decoder {
 
-public class Decoder implements FlagVar {
-
-    public static short[] upChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.Fmin);
-    public static short[] downChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.Fmax);
+    public static short[] lowChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
+    public static short[] highChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.highFStart);
 
 
     // create variables to store the samples in case frequent new and return
 
-    public int processBufferSize = 4096;
+    public int processBufferSize;
 
-    public int chirpCorrLen = getFFTLen(processBufferSize+ lChirp, lChirp);
+    public int chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp, FlagVar.lChirp);
 
     //we calculate the fft before decoding in order to reduce computation time.
-    public float[] upChirpFFT;
-    public float[] downChirpFFT;
-    public float[][] upSymbolFFTs;
-    public float[][] downSymbolFFTs;
+    public float[] lowChirpFFT;
+    public float[] highChirpFFT;
     protected float maRatio;
     protected float ratio;
 
@@ -32,14 +28,14 @@ public class Decoder implements FlagVar {
 
     public void initialize(int processBufferSize){
         this.processBufferSize = processBufferSize;
-        chirpCorrLen = getFFTLen(processBufferSize+ lChirp +startBeforeMaxCorr, lChirp);
+        chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp +FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
 
         //compute the fft of the preambles and symbols to reduce the computation cost;
-        upChirpFFT = new float[chirpCorrLen];
-        downChirpFFT = new float[chirpCorrLen];
+        lowChirpFFT = new float[chirpCorrLen];
+        highChirpFFT = new float[chirpCorrLen];
 
-        upChirpFFT = JniUtils.fft(normalization(upChirp), chirpCorrLen);
-        downChirpFFT = JniUtils.fft(normalization(downChirp), chirpCorrLen);
+        lowChirpFFT = JniUtils.fft(normalization(lowChirp), chirpCorrLen);
+        highChirpFFT = JniUtils.fft(normalization(highChirp), chirpCorrLen);
 
 
 
@@ -90,36 +86,18 @@ public class Decoder implements FlagVar {
         //compute the corr
         float[] corr = JniUtils.xcorr(data1,data2);
 
-        if(chirpDetectionType >= DETECT_TYPE1 && chirpDetectionType <= DETECT_TYPE3) {
-            IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
-            //compute the fit vals
-            float[] fitVals = getFitValsFromCorr(corr);
-            //get the fit index
-            int index = getFitPos(fitVals, corr);
-            indexMaxVarInfo.index = index;
-            indexMaxVarInfo.fitVal = fitVals[index];
-            if(index == 0 ){
-                Common.println("");
-                Common.println("corr:"+corr.length+" "+Arrays.toString(corr));
-                Common.println("fitVals:"+fitVals.length+" "+Arrays.toString(fitVals));
-            }
+        IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
+        //compute the fit vals
+        float[] fitVals = getFitValsFromCorr(corr);
+        //get the fit index
+        int index = getFitPos(fitVals, corr);
+        indexMaxVarInfo.index = index;
+        indexMaxVarInfo.fitVal = fitVals[index];
 
-            //detect whether the chirp signal exists.
-            IndexMaxVarInfo resultInfo = preambleDetection(corr, indexMaxVarInfo);
-            return resultInfo;
-        }else {
-            IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,corr.length-1);
-            float mean = Algorithm.meanValue(corr,info.index-startBeforeMaxCorr,info.index-endBeforeMaxCorr-1);
-            maRatio = info.fitVal/mean;
-            Common.println("index:"+info.index+"   maRatio:"+maRatio+"   maxCorr:"+corr[info.index]);
-            if(isIndexAvailable(info)){
+        //detect whether the chirp signal exists.
+        IndexMaxVarInfo resultInfo = preambleDetection(corr, indexMaxVarInfo);
+        return resultInfo;
 
-                if((maRatio>maxAvgRatioThreshold)) {
-                    info.isReferenceSignalExist = true;
-                }
-            }
-            return info;
-        }
     }
 
 
@@ -139,7 +117,7 @@ public class Decoder implements FlagVar {
         for(int i=0;i<fitVals.length;i++){
             maxCorr = maxCorr<corr[i]?corr[i]:maxCorr;
         }
-        float threshold = ratioAvailableThreshold*maxCorr;
+        float threshold = FlagVar.ratioAvailableThreshold*maxCorr;
         for(int i=0;i<fitVals.length;i++){
             if(fitVals[i]>max && corr[i]>threshold){
                 max = fitVals[i];
@@ -158,24 +136,20 @@ public class Decoder implements FlagVar {
      * @return fitVals
      */
     public float[] getFitValsFromCorr(float [] corr){
-        float[] fitVals = new float[processBufferSize+ lChirp +startBeforeMaxCorr];
+        float[] fitVals = new float[processBufferSize+ FlagVar.lChirp +FlagVar.startBeforeMaxCorr];
         float val = 0;
-        for(int i=0;i<startBeforeMaxCorr-endBeforeMaxCorr;i++){
+        for(int i=0;i<FlagVar.startBeforeMaxCorr-FlagVar.endBeforeMaxCorr;i++){
             val += corr[i];
         }
-        for(int i=startBeforeMaxCorr;i<fitVals.length;i++){
+        for(int i=FlagVar.startBeforeMaxCorr;i<fitVals.length;i++){
             fitVals[i] = val;
-            val -= corr[i-startBeforeMaxCorr];
-            val += corr[i-endBeforeMaxCorr];
+            val -= corr[i-FlagVar.startBeforeMaxCorr];
+            val += corr[i-FlagVar.endBeforeMaxCorr];
 
         }
-        for(int i=startBeforeMaxCorr;i<fitVals.length;i++){
-            fitVals[i] = corr[i]*(startBeforeMaxCorr-endBeforeMaxCorr)/fitVals[i];
-            if(chirpDetectionType == FlagVar.DETECT_TYPE2){
-                fitVals[i] = fitVals[i]*corr[i];
-            }else if(chirpDetectionType == FlagVar.DETECT_TYPE3){
-                fitVals[i] = fitVals[i]*corr[i]*corr[i];
-            }
+        for(int i=FlagVar.startBeforeMaxCorr;i<fitVals.length;i++){
+            fitVals[i] = corr[i]*(FlagVar.startBeforeMaxCorr-FlagVar.endBeforeMaxCorr)/fitVals[i];
+            fitVals[i] = fitVals[i]*corr[i];
         }
         return fitVals;
     }
@@ -227,16 +201,12 @@ public class Decoder implements FlagVar {
         best method considering the fitVals and the corr.
          */
         maRatio = indexMaxVarInfo.fitVal;
-        if(chirpDetectionType == FlagVar.DETECT_TYPE2){
-            maRatio = maRatio/corr[indexMaxVarInfo.index];
-        }else if(chirpDetectionType == FlagVar.DETECT_TYPE3){
-            maRatio = maRatio/corr[indexMaxVarInfo.index]/corr[indexMaxVarInfo.index];
-        }
+        maRatio = maRatio/corr[indexMaxVarInfo.index];
         ratio = (float) (maRatio*Math.log(corr[indexMaxVarInfo.index]+1));
-        if(maRatio > maxAvgRatioThreshold && ratio > ratioThreshold && isIndexAvailable(indexMaxVarInfo)) {
+        if(maRatio > FlagVar.maxAvgRatioThreshold && ratio > FlagVar.ratioThreshold && isIndexAvailable(indexMaxVarInfo)) {
             indexMaxVarInfo.isReferenceSignalExist = true;
         }
-        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+maxAvgRatioThreshold+"  rThreshold:"+ratioThreshold);
+        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+FlagVar.maxAvgRatioThreshold+"  rThreshold:"+FlagVar.ratioThreshold);
         return indexMaxVarInfo;
     }
 
@@ -245,7 +215,7 @@ public class Decoder implements FlagVar {
 
     public boolean isIndexAvailable(IndexMaxVarInfo indexMaxVarInfo){
         int index = indexMaxVarInfo.index;
-        if(index >= processBufferSize+startBeforeMaxCorr || index < startBeforeMaxCorr){
+        if(index >= processBufferSize+FlagVar.startBeforeMaxCorr || index < FlagVar.startBeforeMaxCorr){
             return false;
         }else{
             return true;

@@ -6,6 +6,7 @@ import android.os.Process;
 
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -32,6 +33,7 @@ public class ServerThread extends WifiP2pThread {
     private BufferedReader bufferedReader;
     private ServerSocket serverSocket;
     private Socket socket;
+    public boolean connected = false;
 
 
     private long writeReadInterval = 20000;
@@ -78,14 +80,14 @@ public class ServerThread extends WifiP2pThread {
             String info = null;
             while (isRunning ) {
 
-//                    if(!socket.isClosed() && socket.isConnected()){
-//                        System.out.println("server 正在连接中。");
-//                    }
                 while (isPausing) {
                     sleep(0, (int) writeReadInterval);
                 }
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
-                    Common.println(info);
+                    Common.println("server:"+info);
+                    for(NetworkMsgListener listener:listeners.values()){
+                        listener.handleMsg(info);
+                    }
                     Message msg = new Message();
                     msg.obj = info;
                     mHandler.sendMessage(msg);
@@ -106,6 +108,9 @@ public class ServerThread extends WifiP2pThread {
             isRunning = false;
             e.printStackTrace();
         }finally {
+            Message msg = new Message();
+            msg.obj = FlagVar.connectionThreadEndStr;
+            mHandler.sendMessage(msg);
             close();
         }
 
@@ -114,6 +119,7 @@ public class ServerThread extends WifiP2pThread {
     @Override
     public void stopRunning(){
         isRunning = false;
+        connected = false;
         Common.println("server thread stop running");
 
     }
@@ -170,10 +176,7 @@ public class ServerThread extends WifiP2pThread {
         }
     }
 
-    private class WriteInfo{
-        public boolean hasData = false;
-        public String str;
-    }
+
 
     public void pause(){
         isPausing = true;

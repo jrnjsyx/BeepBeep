@@ -26,5 +26,5 @@ import java.lang.annotation.RetentionPolicy;
 })
 @Retention(RetentionPolicy.SOURCE)
 @Documented
-@interface ProcessPriority {
+public @interface ProcessPriority {
 }

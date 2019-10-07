@@ -6,6 +6,8 @@ import android.media.MediaRecorder;
 import android.os.Process;
 import android.util.Log;
 
+import com.example.jrnjsyx.beepbeep.physical.thread.PriorityRunnable;
+
 import java.io.FileNotFoundException;
 
 /**
@@ -96,7 +98,7 @@ public class AudioRecorder implements IAudioRecorder {
                     short recordBuffer[] = new short[bufferSize];
                     do {
                         readFully(recorder,recordBuffer,0,bufferSize);
-//                        System.out.println("bufferSize:"+bufferSize+" recordBuffer.length:"+recordBuffer.length+" val:"+recordBuffer[4097]+" time:"+(new Date().getTime()));
+//                        Common.println("bufferSize:"+bufferSize+" recordBuffer.length:"+recordBuffer.length+" val:"+recordBuffer[4097]+" time:"+(new Date().getTime()));
 
                         recordingCallback.onDataReady(recordBuffer,bufferSize/2);
                     } while (recorderState == RECORDER_STATE_BUSY);
