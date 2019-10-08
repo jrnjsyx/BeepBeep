@@ -100,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     private boolean bModeStrRecv = false;
     private int aCnt = 0;
     private int bCnt = 0;
+    private boolean isAppReady = false;
 
 
     @Override
@@ -137,12 +138,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
                     break;
                 }
                 case R.id.main_linear:{
-                    if(checkPermission()){
-                        setButtonEnabled(aButton,true);
-                        setButtonEnabled(bButton,true);
-                        setButtonEnabled(connectButton,true);
-                        mainLinear.setClickable(false);
-                    }
+                    afterMainLinearPress();
                     break;
                 }
             }
@@ -163,6 +159,16 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         channel = wifiP2pManager.initialize(this, getMainLooper(), this);
         broadcastReceiver = new DirectBroadcastReceiver(wifiP2pManager, channel, this);
         registerReceiver(broadcastReceiver, DirectBroadcastReceiver.getIntentFilter());
+    }
+
+    private void afterMainLinearPress(){
+        if(checkPermission()){
+            setButtonEnabled(aButton,true);
+            setButtonEnabled(bButton,true);
+            setButtonEnabled(connectButton,true);
+            mainLinear.setClickable(false);
+            isAppReady = true;
+        }
     }
 
     private void afterAButtonPress(){
@@ -529,6 +535,9 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
 
     @Override
     public void onDisconnection() {
+        if(!isAppReady){
+            return;
+        }
         Log.e(TAG, "onDisconnection");
         connectButton.setEnabled(true);
         if(currentP2pThread != null) {
