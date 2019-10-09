@@ -9,15 +9,17 @@ public class FlagVar {
     public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
-//    public static int lowFStart = 15500;
-//    public static int highFStart = 17500;
-    public static int lowFStart = 11000;
-    public static int highFStart = 13000;
+    public static int lowFStart = 15500;
+    public static int highFStart = 17500;
+//    public static int lowFStart = 11000;
+//    public static int highFStart = 13000;
 
-    public static String connectionStartStr = "start";
-    public static String connectionThreadEndStr = "end";
+    public static String connectionStartStr = "connectionStart";
+    public static String connectionThreadEndStr = "connectionEnd";
     public static String aModeStr = "aMode";
     public static String bModeStr = "bMode";
+    public static String rangingStartStr = "rangingStartStr";
+    public static String rangingEndStr = "rangingEnd";
 
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
 

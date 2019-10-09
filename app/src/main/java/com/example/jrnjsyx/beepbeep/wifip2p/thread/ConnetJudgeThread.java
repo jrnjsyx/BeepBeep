@@ -9,10 +9,13 @@ import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 
 public class ConnetJudgeThread extends Thread{
 
+
+
     private boolean isHostConnectable;
     private String host;
     private int port;
     private NetworkMsgListener listener;
+
     public ConnetJudgeThread(String host, int port,NetworkMsgListener listener){
         this.host = host;
         this.port = port;

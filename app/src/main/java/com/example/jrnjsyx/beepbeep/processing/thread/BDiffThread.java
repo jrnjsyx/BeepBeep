@@ -6,7 +6,6 @@ import android.os.Message;
 
 import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
 import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
-import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 public class BDiffThread implements Runnable {
@@ -25,14 +24,14 @@ public class BDiffThread implements Runnable {
     public void run() {
         decodeThread.decodeStart();
         audioRecorder.startRecord();
-        while (decodeThread.lowChirpPos.size() < 1){
+        while (decodeThread.lowChirpPositions.size() < 1){
             try {
                 Thread.sleep(1);
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
-        while (decodeThread.lowChirpPos.size() < 2){
+        while (decodeThread.lowChirpPositions.size() < 2){
             try {
                 Thread.sleep(1);
             }catch (Exception e){
@@ -40,8 +39,8 @@ public class BDiffThread implements Runnable {
             }
         }
         int sampleDiff = 0;
-        synchronized (decodeThread.lowChirpPos){
-            sampleDiff = decodeThread.lowChirpPos.get(1)- decodeThread.lowChirpPos.get(0);
+        synchronized (decodeThread.lowChirpPositions){
+            sampleDiff = decodeThread.lowChirpPositions.get(1)- decodeThread.lowChirpPositions.get(0);
         }
         Message msg = new Message();
         msg.arg1 = sampleDiff;
