@@ -27,6 +27,7 @@ import android.widget.Toast;
 import com.example.jrnjsyx.beepbeep.R;
 import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
 import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
+import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
 import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
@@ -45,7 +46,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 
-public class MainActivity extends AppCompatActivity implements AudioRecorder.RecordingCallback,DirectActionListener {
+public class MainActivity extends AppCompatActivity implements RecordThread.RecordingCallback,DirectActionListener {
 
 
     protected static final String TAG = "MainActivity";
@@ -62,14 +63,10 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     Button connectButton;
     @BindView(R.id.connect_ready_button)
     Button connectReadyButton;
-    @BindView(R.id.connection_linear)
-    LinearLayout connectionLinear;
-    @BindView(R.id.create_group)
-    Button createGroupButton;
-    @BindView(R.id.remove_group)
-    Button removeGroupButton;
     @BindView(R.id.main_linear)
     LinearLayout mainLinear;
+    @BindView(R.id.end_button)
+    Button endButton;
 
     private WifiP2pManager wifiP2pManager;
 
@@ -80,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
 
 
     private AudioRecorder audioRecorder;
+    private RecordThread recordThread;
     private PlayThread playThread;
     private DecodeThread decodeThread;
     private WifiP2pThread serverThread;
@@ -96,10 +94,10 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     static int NO_SERVER_CLIENT_MODE = 0;
     private boolean isConnected = false;
     //wifi直连后，是否接收到对面发来的确认信号
-    private boolean aModeStrRecv = false;
-    private boolean bModeStrRecv = false;
     private int aCnt = 0;
     private int bCnt = 0;
+    private boolean isAppReady = false;
+    private boolean started = false;
 
 
     @Override
@@ -137,17 +135,18 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
                     break;
                 }
                 case R.id.main_linear:{
-                    if(checkPermission()){
-                        setButtonEnabled(aButton,true);
-                        setButtonEnabled(bButton,true);
-                        setButtonEnabled(connectButton,true);
-                        mainLinear.setClickable(false);
-                    }
+                    afterMainLinearPress();
+                    break;
+                }
+                case R.id.end_button:{
+                    afterEndButtonPress();
                     break;
                 }
             }
         }
     };
+
+
 
     //初始化参数
     public void initParams(){
@@ -158,11 +157,28 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         connectButton.setOnClickListener(onClickListener);
         connectReadyButton.setOnClickListener(onClickListener);
         mainLinear.setOnClickListener(onClickListener);
+        endButton.setOnClickListener(onClickListener);
 
         wifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(this, getMainLooper(), this);
         broadcastReceiver = new DirectBroadcastReceiver(wifiP2pManager, channel, this);
         registerReceiver(broadcastReceiver, DirectBroadcastReceiver.getIntentFilter());
+    }
+
+    private void afterEndButtonPress(){
+        currentP2pThread.setStr(FlagVar.rangingEndStr);
+        sleep(100);
+        stopRanging();
+    }
+
+    private void afterMainLinearPress(){
+        if(checkPermission()){
+            setButtonEnabled(aButton,true);
+            setButtonEnabled(bButton,true);
+            setButtonEnabled(connectButton,true);
+            mainLinear.setClickable(false);
+            isAppReady = true;
+        }
     }
 
     private void afterAButtonPress(){
@@ -215,28 +231,11 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     }
 
     private void afterStartButtonPress(){
-        aModeStrRecv = false;
-        bModeStrRecv = false;
         if(aMode){
             currentP2pThread.setStr(FlagVar.aModeStr);
-            NetworkMsgListener listener = new NetworkMsgListener() {
-                @Override
-                public void handleMsg(String msg) {
-                    aModeStart(msg);
-                }
-            };
-            currentP2pThread.addListener(FlagVar.aModeStr,listener);
         }
         else if(bMode){
             currentP2pThread.setStr(FlagVar.bModeStr);
-
-            NetworkMsgListener listener = new NetworkMsgListener() {
-                @Override
-                public void handleMsg(String msg) {
-                    bModeStart(msg);
-                }
-            };
-            currentP2pThread.addListener(FlagVar.bModeStr,listener);
         }
     }
 
@@ -247,15 +246,20 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
             showToast("开始测距。");
             playThread = new PlayThread(Decoder.lowChirp);
             playThread.start();
-            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, true);
+            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, true,currentP2pThread);
             new Thread(decodeThread).start();
-            audioRecorder = new AudioRecorder();
-            audioRecorder.recordingCallback(MainActivity.this);
-            audioRecorder.startRecord();
+            recordThread = new RecordThread(this);
+            recordThread.start();
+//            audioRecorder = new AudioRecorder();
+//            audioRecorder.recordingCallback(MainActivity.this);
+//            audioRecorder.startRecord();
             setButtonEnabled(connectReadyButton,false);
             setButtonEnabled(startButton,false);
-            currentP2pThread.removeListener(FlagVar.aModeStr);
-            currentP2pThread.removeListener(FlagVar.bModeStr);
+            setButtonEnabled(aButton,false);
+            setButtonEnabled(bButton,false);
+            setButtonEnabled(endButton,true);
+            currentP2pThread.removeListener(FlagVar.rangingStartStr);
+            started = true;
         }
         else if(msg.equals(FlagVar.aModeStr)){
             showToast("未能同时开启A、B两种模式。");
@@ -267,15 +271,20 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
             showToast("开始测距。");
             playThread = new PlayThread(Decoder.highChirp);
             playThread.start();
-            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, false);
+            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, false,currentP2pThread);
             new Thread(decodeThread).start();
-            audioRecorder = new AudioRecorder();
-            audioRecorder.recordingCallback(MainActivity.this);
-            audioRecorder.startRecord();
+            recordThread = new RecordThread(this);
+            recordThread.start();
+//            audioRecorder = new AudioRecorder();
+//            audioRecorder.recordingCallback(MainActivity.this);
+//            audioRecorder.startRecord();
             setButtonEnabled(connectReadyButton,false);
             setButtonEnabled(startButton,false);
-            currentP2pThread.removeListener(FlagVar.aModeStr);
-            currentP2pThread.removeListener(FlagVar.bModeStr);
+            setButtonEnabled(aButton,false);
+            setButtonEnabled(bButton,false);
+            setButtonEnabled(endButton,true);
+            currentP2pThread.removeListener(FlagVar.rangingStartStr);
+            started = true;
         }
         else if(msg.equals(FlagVar.bModeStr)){
 
@@ -286,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
     private void judgeCanStart(){
         if(isConnected && (aMode || bMode)){
             setButtonEnabled(startButton,true);
-            NetworkMsgListener listener = new NetworkMsgListener() {
+            NetworkMsgListener rangingStartlistener = new NetworkMsgListener() {
                 @Override
                 public void handleMsg(String msg) {
                     if(aMode){
@@ -297,8 +306,18 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
                     }
                 }
             };
-            currentP2pThread.addListener(FlagVar.aModeStr,listener);
-            currentP2pThread.addListener(FlagVar.bModeStr,listener);
+            currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
+            NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
+                @Override
+                public void handleMsg(String msg) {
+                    if(msg.equals(FlagVar.rangingEndStr)) {
+                        currentP2pThread.setStr(FlagVar.rangingEndStr);
+                        stopRanging();
+                        currentP2pThread.removeListener(FlagVar.rangingEndStr);
+                    }
+                }
+            };
+            currentP2pThread.addListener(FlagVar.rangingEndStr,rangingEndListener);
         }else{
             setButtonEnabled(startButton,false);
         }
@@ -362,11 +381,7 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
         NetworkMsgListener listener = new NetworkMsgListener() {
             @Override
             public void handleMsg(String msg) {
-                try {
-                    Thread.currentThread().sleep(10);
-                } catch (Exception e) {
-                    Log.e(TAG, e.toString());
-                }
+               sleep(10);
 
                 clientThread = new ClientThread(myHandler, wifiP2pInfo.groupOwnerAddress.getHostAddress());
                 clientThread.start();
@@ -462,7 +477,8 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
 
     @Override
     public void onDataReady(short[] data, int len) {
-        Common.println("onDataReady");
+//        Common.println("onDataReady");
+//        Common.println("data length:"+data.length+"  len:"+len);
         short[] data1 = new short[len];
         short[] data2 = new short[len];
         for (int i = 0; i < len; i++) {
@@ -529,28 +545,52 @@ public class MainActivity extends AppCompatActivity implements AudioRecorder.Rec
 
     @Override
     public void onDisconnection() {
+        if(!isAppReady){
+            return;
+        }
         Log.e(TAG, "onDisconnection");
-        connectButton.setEnabled(true);
+        stopRanging();
+
+    }
+
+    private void stopRanging(){
+
         if(currentP2pThread != null) {
             currentP2pThread.stopRunning();
         }
-        currentP2pThread = null;
-        serverThread = null;
-        clientThread = null;
+//        currentP2pThread = null;
+//        serverThread = null;
+//        clientThread = null;
         aMode = false;
         bMode = false;
-        aButton.setEnabled(true);
-        bButton.setEnabled(true);
+        setButtonEnabled(connectButton,true);
+        setButtonEnabled(aButton,true);
+        setButtonEnabled(bButton,true);
+        setButtonEnabled(endButton,false);
+        setButtonEnabled(startButton,false);
         isConnected = false;
-        aModeStrRecv = false;
-        bModeStrRecv = false;
+        started = false;
         judgeCanStart();
         if(currentP2pThread != null) {
             currentP2pThread.removeListener(FlagVar.connectionStartStr);
-            currentP2pThread.removeListener(FlagVar.aModeStr);
-            currentP2pThread.removeListener(FlagVar.bModeStr);
+            currentP2pThread.removeListener(FlagVar.rangingStartStr);
         }
-
+        if(playThread != null) {
+            playThread.stopRunning();
+            Common.println("play stop.");
+        }
+        if(recordThread != null){
+            recordThread.stopRunning();
+            Common.println("record stop.");
+            recordThread.printIsRunning();
+        }
+        if(decodeThread != null) {
+            decodeThread.stopRunning();
+            Common.println("decode stop.");
+        }
+//        playThread = null;
+//        decodeThread = null;
+//        audioRecorder = null;
     }
 
     @Override

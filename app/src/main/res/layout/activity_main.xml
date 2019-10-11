@@ -53,29 +53,26 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/connection_linear"
-        android:visibility="gone">
+        >
+
         <Button
+            android:id="@+id/start_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/create_group"
-            android:text="create connection" />
+            android:text="start"
+            android:enabled="false"
+            />
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/remove_group"
-            android:text="remove connection" />
+            android:id="@+id/end_button"
+            android:text="end"
+            android:enabled="false"/>
     </LinearLayout>
 
 
-    <Button
-        android:id="@+id/start_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="start"
-        android:enabled="false"
-        />
+
 
     <TextView
         android:layout_width="wrap_content"

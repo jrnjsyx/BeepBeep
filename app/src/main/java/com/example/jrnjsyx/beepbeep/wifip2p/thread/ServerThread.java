@@ -19,11 +19,9 @@ import java.net.Socket;
 
 public class ServerThread extends WifiP2pThread {
 
-    private boolean isRunning = true;
     private boolean isAccepting = true;
 
     private Handler mHandler;
-    private WriteInfo writeInfo;
     private boolean isPausing = false;
 
     private OutputStream outputStream;
@@ -33,7 +31,6 @@ public class ServerThread extends WifiP2pThread {
     private BufferedReader bufferedReader;
     private ServerSocket serverSocket;
     private Socket socket;
-    public boolean connected = false;
 
 
     private long writeReadInterval = 20000;
@@ -41,7 +38,6 @@ public class ServerThread extends WifiP2pThread {
 
     public ServerThread(Handler mHandler){
         this.mHandler = mHandler;
-        writeInfo = new WriteInfo();
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
         try{
             serverSocket = new ServerSocket();
@@ -53,14 +49,6 @@ public class ServerThread extends WifiP2pThread {
             e.printStackTrace();
         }
         Common.println("server create");
-    }
-    @Override
-    public void setStr(String str) {
-        Common.println("server thread setStr");
-        synchronized (writeInfo){
-            writeInfo.hasData = true;
-            writeInfo.str = str;
-        }
     }
 
     public void run(){
@@ -80,27 +68,15 @@ public class ServerThread extends WifiP2pThread {
             String info = null;
             while (isRunning ) {
 
-                while (isPausing) {
-                    sleep(0, (int) writeReadInterval);
-                }
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
                     Common.println("server:"+info);
-                    for(NetworkMsgListener listener:listeners.values()){
-                        listener.handleMsg(info);
-                    }
+                    listenersHandleMsg(info);
                     Message msg = new Message();
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
 
-                if (writeInfo.hasData == true) {
-                    synchronized (writeInfo) {
-                        writeInfo.hasData = false;
-                        printWriter.write(writeInfo.str + "\n");
-                        printWriter.flush();
-                        Common.println(writeInfo.str);
-                    }
-                }
+                sendMessage(printWriter);
                 sleep(0, (int) writeReadInterval);
             }
         }catch (Exception e){
@@ -118,8 +94,7 @@ public class ServerThread extends WifiP2pThread {
 
     @Override
     public void stopRunning(){
-        isRunning = false;
-        connected = false;
+        super.stopRunning();
         Common.println("server thread stop running");
 
     }
@@ -178,10 +153,4 @@ public class ServerThread extends WifiP2pThread {
 
 
 
-    public void pause(){
-        isPausing = true;
-    }
-    public void stopPausing(){
-        isPausing = false;
-    }
 }

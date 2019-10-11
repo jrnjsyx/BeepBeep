@@ -4,7 +4,6 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
-import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 
@@ -20,7 +19,7 @@ public class ADiffThread implements Runnable{
 
     @Override
     public void run() {
-        while (decodeThread.lowChirpPos.size() < 2) {
+        while (decodeThread.lowChirpPositions.size() < 2) {
             try {
                 Thread.sleep(1);
             }catch (Exception e){
@@ -28,8 +27,8 @@ public class ADiffThread implements Runnable{
             }
         }
         int sampleDiff = 0;
-        synchronized (decodeThread.lowChirpPos) {
-            sampleDiff = decodeThread.lowChirpPos.get(1) - decodeThread.lowChirpPos.get(0);
+        synchronized (decodeThread.lowChirpPositions) {
+            sampleDiff = decodeThread.lowChirpPositions.get(1) - decodeThread.lowChirpPositions.get(0);
         }
         Message msg = new Message();
         msg.arg1 = sampleDiff;

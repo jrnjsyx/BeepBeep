@@ -22,8 +22,6 @@ public class ClientThread extends WifiP2pThread{
 
     private String host;
 
-    private boolean isRunning = true;
-    private WriteInfo writeInfo;
     private OutputStream outputStream;
     private PrintWriter printWriter;
     private InputStream inputStream;
@@ -33,20 +31,12 @@ public class ClientThread extends WifiP2pThread{
     private long urgentDataInterval = 2000;//milliseconds
     private long writeReadInterval = 20000;//nanoseconds
 
+
     public ClientThread(Handler mHandler, String host){
         Common.println("client create");
         this.mHandler = mHandler;
         this.host = host;
-        writeInfo = new WriteInfo();
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-    }
-    @Override
-    public void setStr(String str) {
-        Common.println("client thread setStr");
-        synchronized (writeInfo){
-            writeInfo.hasData = true;
-            writeInfo.str = str;
-        }
     }
 
     public void run(){
@@ -67,32 +57,13 @@ public class ClientThread extends WifiP2pThread{
 
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
                     Common.println("client:"+info);
-                    synchronized (listeners) {
-                        for (NetworkMsgListener listener : listeners.values()) {
-                            listener.handleMsg(info);
-                        }
-                        for(String str:listenersToBeRemoved){
-                            listeners.remove(str);
-                        }
-                    }
+                    listenersHandleMsg(info);
                     Message msg = new Message();
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
 
-                if (writeInfo.hasData == true) {
-                    synchronized (writeInfo) {
-                        writeInfo.hasData = false;
-                        printWriter.write(writeInfo.str+"\n");
-                        printWriter.flush();
-                        Common.println(writeInfo.str);
-                    }
-                }
-                cnt++;
-                if(cnt == times){
-                    cnt = 0;
-                    socket.sendUrgentData(0xFF);
-                }
+                sendMessage(printWriter);
                 sleep(0,(int)writeReadInterval);
             }
         }catch (Exception e){
@@ -154,7 +125,7 @@ public class ClientThread extends WifiP2pThread{
 
     @Override
     public void stopRunning(){
-        isRunning = false;
+        super.stopRunning();
         Common.println("client thread stop running");
     }
 

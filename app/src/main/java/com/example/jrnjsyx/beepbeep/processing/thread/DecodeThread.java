@@ -7,6 +7,7 @@ import com.example.jrnjsyx.beepbeep.processing.IndexMaxVarInfo;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
+import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -19,21 +20,28 @@ public class DecodeThread extends Decoder implements Runnable {
     private Integer mLoopCounter = 0;
     private Handler mHandler;
     public List<short[]> samplesList;
-    public List<Integer> lowChirpPos;
-    public List<Integer> highChirpPos;
+    public List<Integer> lowChirpPositions;
+    public List<Integer> highChirpPositions;
+    public List<Integer> remoteLowChirpPositions;
+    public List<Integer> remoteHighChirpPositions;
     private boolean isOmittingLow;
+    private WifiP2pThread currentP2pThread;
+
 
 
     private IndexMaxVarInfo mIndexMaxVarInfo;
 
-    public DecodeThread(Handler mHandler,int size,boolean isOmittingLow){
+    public DecodeThread(Handler mHandler, int size, boolean isOmittingLow, WifiP2pThread currentP2pThread){
         mIndexMaxVarInfo = new IndexMaxVarInfo();
         samplesList = new LinkedList<short[]>();
-        lowChirpPos = new LinkedList<Integer>();
-        highChirpPos = new LinkedList<Integer>();
+        lowChirpPositions = new LinkedList<Integer>();
+        highChirpPositions = new LinkedList<Integer>();
+        remoteLowChirpPositions = new LinkedList<Integer>();
+        remoteHighChirpPositions = new LinkedList<Integer>();
         this.mHandler = mHandler;
         initialize(size);
         this.isOmittingLow = isOmittingLow;
+        this.currentP2pThread = currentP2pThread;
     }
 
     /**
@@ -67,25 +75,34 @@ public class DecodeThread extends Decoder implements Runnable {
                     }
                     float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
 
+                    String msg = "";
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, lowChirpFFT);
-
+                    int lowChirpPosition;
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
-                        int sampleCnt = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
-                        Common.println("low chirp pos:"+sampleCnt);
-                        synchronized (lowChirpPos) {
-                            lowChirpPos.add(sampleCnt);
+                        lowChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
+                        Common.println("low chirp pos:"+lowChirpPosition);
+                        synchronized (lowChirpPositions) {
+                            lowChirpPositions.add(lowChirpPosition);
                         }
+                        msg += "lowPos: "+lowChirpPosition+" ";
                     }
 
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, highChirpFFT);
-
+                    int highChirpPosition;
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
-                        int sampleCnt = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
-                        Common.println("high chirp pos:"+sampleCnt);
-                        synchronized (highChirpPos) {
-                            highChirpPos.add(sampleCnt);
+                        highChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
+                        Common.println("high chirp pos:"+highChirpPosition);
+                        synchronized (highChirpPositions) {
+                            highChirpPositions.add(highChirpPosition);
                         }
+                        msg += "highPos: "+highChirpPosition;
+
+
                     }
+
+
+
+
 
 
 
@@ -98,11 +115,11 @@ public class DecodeThread extends Decoder implements Runnable {
 
     public void decodeStart(){
         try {
-            synchronized (lowChirpPos){
-                lowChirpPos.clear();
+            synchronized (lowChirpPositions){
+                lowChirpPositions.clear();
             }
-            synchronized (highChirpPos){
-                highChirpPos.clear();
+            synchronized (highChirpPositions){
+                highChirpPositions.clear();
             }
             synchronized (mLoopCounter) {
                 mLoopCounter = 0;
