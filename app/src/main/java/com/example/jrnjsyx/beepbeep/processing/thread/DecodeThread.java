@@ -7,6 +7,7 @@ import com.example.jrnjsyx.beepbeep.processing.IndexMaxVarInfo;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
+import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 
 import java.util.LinkedList;
@@ -26,6 +27,10 @@ public class DecodeThread extends Decoder implements Runnable {
     public List<Integer> remoteHighChirpPositions;
     private boolean isOmittingLow;
     private WifiP2pThread currentP2pThread;
+    public Integer basePos = 0;
+    public Integer remoteBasePos = 0;
+    private int lowChirpPosition;
+    private int highChirpPosition;
 
 
 
@@ -42,6 +47,7 @@ public class DecodeThread extends Decoder implements Runnable {
         initialize(size);
         this.isOmittingLow = isOmittingLow;
         this.currentP2pThread = currentP2pThread;
+        currentP2pThread.addListener(FlagVar.recordStr,networkMsgListener);
     }
 
     /**
@@ -72,40 +78,43 @@ public class DecodeThread extends Decoder implements Runnable {
 
                     synchronized (mLoopCounter) {
                         mLoopCounter++;
+                        basePos = mLoopCounter*processBufferSize;
+                        String str = FlagVar.basePosStr +" "+basePos;
+                        currentP2pThread.setMessage(str);
                     }
                     float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
 
-                    String msg = "";
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, lowChirpFFT);
-                    int lowChirpPosition;
+
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
                         lowChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
-                        Common.println("low chirp pos:"+lowChirpPosition);
+
                         synchronized (lowChirpPositions) {
+                            if(lowChirpPositions.size() > 0) {
+                                Common.println("low chirp pos:" + lowChirpPosition + "    lowdiff:" + (lowChirpPositions.get(lowChirpPositions.size() - 1) - lowChirpPosition));
+                            }
                             lowChirpPositions.add(lowChirpPosition);
                         }
-                        msg += "lowPos: "+lowChirpPosition+" ";
+                        String msg = FlagVar.lowPosStr+" "+lowChirpPosition;
+                        currentP2pThread.setMessage(msg);
+
+
                     }
 
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, highChirpFFT);
-                    int highChirpPosition;
+
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
                         highChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
-                        Common.println("high chirp pos:"+highChirpPosition);
                         synchronized (highChirpPositions) {
+                            if(highChirpPositions.size() > 0) {
+                                Common.println("high chirp pos:" + highChirpPosition + "    highdiff:" + (highChirpPositions.get(highChirpPositions.size() - 1) - highChirpPosition));
+                            }
                             highChirpPositions.add(highChirpPosition);
                         }
-                        msg += "highPos: "+highChirpPosition;
-
-
+                        String msg = FlagVar.highPosStr+" "+highChirpPosition;
+                        currentP2pThread.setMessage(msg);
                     }
-
-
-
-
-
-
-
+                    Common.println("diff:"+(lowChirpPosition-highChirpPosition));
                 }
             }
         }catch (Exception e){
@@ -143,6 +152,30 @@ public class DecodeThread extends Decoder implements Runnable {
             //Thread.currentThread().join();
         }
     }
+
+    private NetworkMsgListener networkMsgListener = new NetworkMsgListener() {
+        @Override
+        public void handleMsg(String msg) {
+            String[] strs = msg.split(" ");
+            if(strs.length == 2){
+                if(strs[0].equals(FlagVar.lowPosStr)){
+                    synchronized (remoteLowChirpPositions){
+                        remoteLowChirpPositions.add(Integer.parseInt(strs[1]));
+                    }
+                }
+                else if(strs[0].equals(FlagVar.highPosStr)){
+                    synchronized (remoteHighChirpPositions){
+                        remoteHighChirpPositions.add(Integer.parseInt(strs[1]));
+                    }
+                }
+                else if(strs[0].equals(FlagVar.basePosStr)){
+                    synchronized (remoteBasePos){
+                        remoteBasePos = Integer.parseInt(strs[1]);
+                    }
+                }
+            }
+        }
+    };
 
 
 }

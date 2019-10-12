@@ -206,7 +206,7 @@ public class Decoder {
         if(maRatio > FlagVar.maxAvgRatioThreshold && ratio > FlagVar.ratioThreshold && isIndexAvailable(indexMaxVarInfo)) {
             indexMaxVarInfo.isReferenceSignalExist = true;
         }
-        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+FlagVar.maxAvgRatioThreshold+"  rThreshold:"+FlagVar.ratioThreshold);
+//        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+FlagVar.maxAvgRatioThreshold+"  rThreshold:"+FlagVar.ratioThreshold);
         return indexMaxVarInfo;
     }
 

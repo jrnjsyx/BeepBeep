@@ -67,17 +67,18 @@ public class ServerThread extends WifiP2pThread {
             printWriter = new PrintWriter(outputStream);
             String info = null;
             while (isRunning ) {
-
+                doPerTurn();
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
-                    Common.println("server:"+info);
+//                    Common.println("server:"+info);
                     listenersHandleMsg(info);
                     Message msg = new Message();
+                    msg.arg1 = FlagVar.DEBUG_TEXT;
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
 
                 sendMessage(printWriter);
-                sleep(0, (int) writeReadInterval);
+//                sleep(0, (int) writeReadInterval);
             }
         }catch (Exception e){
             isAccepting = false;
@@ -85,6 +86,7 @@ public class ServerThread extends WifiP2pThread {
             e.printStackTrace();
         }finally {
             Message msg = new Message();
+            msg.arg1 = FlagVar.DEBUG_TEXT;
             msg.obj = FlagVar.connectionThreadEndStr;
             mHandler.sendMessage(msg);
             close();

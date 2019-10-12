@@ -54,17 +54,18 @@ public class ClientThread extends WifiP2pThread{
             String info = null;
             long cnt = 0;
             while (isRunning) {
-
+                doPerTurn();
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
-                    Common.println("client:"+info);
+//                    Common.println("client:"+info);
                     listenersHandleMsg(info);
                     Message msg = new Message();
+                    msg.arg1 = FlagVar.DEBUG_TEXT;
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
 
                 sendMessage(printWriter);
-                sleep(0,(int)writeReadInterval);
+//                sleep(0,(int)writeReadInterval);
             }
         }catch (Exception e){
             isRunning = false;
@@ -72,6 +73,7 @@ public class ClientThread extends WifiP2pThread{
         }
         finally {
             Message msg = new Message();
+            msg.arg1 = FlagVar.DEBUG_TEXT;
             msg.obj = FlagVar.connectionThreadEndStr;
             mHandler.sendMessage(msg);
             close();

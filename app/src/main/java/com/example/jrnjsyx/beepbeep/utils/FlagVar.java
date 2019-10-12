@@ -20,6 +20,17 @@ public class FlagVar {
     public static String bModeStr = "bMode";
     public static String rangingStartStr = "rangingStartStr";
     public static String rangingEndStr = "rangingEnd";
+    public static String lowPosStr = "lowPosStr";
+    public static String highPosStr = "highPosStr";
+    public static String recordStr = "recordStr";
+    public static String basePosStr = "basePosStr";
+
+    public static int DEBUG_TEXT = 0;
+    public static int DISTANCE_TEXT = 1;
+    public static int minPosDataCapacity = 3;
+    public static int minPlayBufferSize = 4096;
+    public static int minRecordBufferSize = 4096;
+    public static int playThreadDelay = 70;
 
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
 

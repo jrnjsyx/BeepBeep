@@ -17,6 +17,7 @@ public class WifiP2pThread extends Thread {
     private List<String> infosToWrite = new LinkedList<String>();
 
 
+
     public void addListener(String key,NetworkMsgListener listener){
         synchronized (listener) {
             listeners.put(key, listener);
@@ -30,11 +31,11 @@ public class WifiP2pThread extends Thread {
 
     }
 
-    public void setStr(String str){
+    public void setMessage(String str){
         synchronized (infosToWrite){
             infosToWrite.add(str);
         }
-        Common.println("wifip2p thread setStr");
+//        Common.println("wifip2p thread setMessage");
     };
 
     public void stopRunning(){
@@ -62,9 +63,17 @@ public class WifiP2pThread extends Thread {
                 for (String str : infosToWrite) {
                     printWriter.write(str + "\n");
                     printWriter.flush();
-                    Common.println(str);
+//                    Common.println(str);
                 }
                 infosToWrite.clear();
+            }
+        }
+    }
+
+    protected void doPerTurn(){
+        synchronized (listeners){
+            for (NetworkMsgListener listener : listeners.values()) {
+                listener.doPerTurn();
             }
         }
     }

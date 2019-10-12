@@ -3,13 +3,9 @@ package com.example.jrnjsyx.beepbeep.physical.thread;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.util.Log;
 
-import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
-
-import java.util.Date;
 
 public class RecordThread extends Thread {
     public static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -57,10 +53,10 @@ public class RecordThread extends Thread {
         }
     }
 
-    public int getBufferSize(){
+    public static int getBufferSize(){
         int bufferSize = AudioRecord.getMinBufferSize(FlagVar.Fs, RECORDER_CHANNELS_IN, RECORDER_AUDIO_ENCODING);
 
-        int size = 8192;
+        int size = FlagVar.minRecordBufferSize*2;
         while(size < bufferSize){
             size = size * 2;
         }
@@ -73,8 +69,5 @@ public class RecordThread extends Thread {
         synchronized (isRunning) {
             isRunning = false;
         }
-    }
-    public void printIsRunning(){
-        Common.println("isRunning:"+isRunning);
     }
 }
