@@ -12,7 +12,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -25,10 +24,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.jrnjsyx.beepbeep.R;
-import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
 import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
 import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
+import com.example.jrnjsyx.beepbeep.processing.thread.ADiffThread;
+import com.example.jrnjsyx.beepbeep.processing.thread.BDiffThread;
 import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
@@ -41,6 +41,7 @@ import com.example.jrnjsyx.beepbeep.wifip2p.thread.ClientThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ServerThread;
 
 import java.util.Collection;
+import java.util.Date;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -67,6 +68,8 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
     LinearLayout mainLinear;
     @BindView(R.id.end_button)
     Button endButton;
+    @BindView(R.id.distance)
+    TextView distanceTextView;
 
     private WifiP2pManager wifiP2pManager;
 
@@ -76,7 +79,6 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
 
 
 
-    private AudioRecorder audioRecorder;
     private RecordThread recordThread;
     private PlayThread playThread;
     private DecodeThread decodeThread;
@@ -84,6 +86,8 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
     private WifiP2pThread clientThread;
     private WifiP2pThread currentP2pThread;
     private ConnetJudgeThread connetJudgeThread;
+    private ADiffThread aDiffThread;
+    private BDiffThread bDiffThread;
 
     private WifiP2pInfo wifiP2pInfo;
     private boolean aMode = false;
@@ -166,7 +170,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
     }
 
     private void afterEndButtonPress(){
-        currentP2pThread.setStr(FlagVar.rangingEndStr);
+        currentP2pThread.setMessage(FlagVar.rangingEndStr);
         sleep(100);
         stopRanging();
     }
@@ -212,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         if(bButton.isEnabled() == false){
             if(currentP2pThread != null){
                 aCnt++;
-                currentP2pThread.setStr("a pressed "+aCnt);
+                currentP2pThread.setMessage("a pressed "+aCnt);
                 Common.println("a pressed");
             }else{
                 showToast("not connected");
@@ -222,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         else if(aButton.isEnabled() == false){
             if(currentP2pThread != null){
                 bCnt++;
-                currentP2pThread.setStr("b pressed "+bCnt);
+                currentP2pThread.setMessage("b pressed "+bCnt);
                 Common.println("b pressed");
             }else{
                 showToast("not connected");
@@ -232,86 +236,120 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
 
     private void afterStartButtonPress(){
         if(aMode){
-            currentP2pThread.setStr(FlagVar.aModeStr);
+            currentP2pThread.setMessage(FlagVar.aModeStr);
         }
         else if(bMode){
-            currentP2pThread.setStr(FlagVar.bModeStr);
+            currentP2pThread.setMessage(FlagVar.bModeStr);
         }
     }
 
-    private void aModeStart(String msg){
+    private void aModeStart(){
 
-        if(msg.equals(FlagVar.bModeStr)){
-            currentP2pThread.setStr(FlagVar.aModeStr);
-            showToast("开始测距。");
-            playThread = new PlayThread(Decoder.lowChirp);
-            playThread.start();
-            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, true,currentP2pThread);
-            new Thread(decodeThread).start();
-            recordThread = new RecordThread(this);
-            recordThread.start();
-//            audioRecorder = new AudioRecorder();
-//            audioRecorder.recordingCallback(MainActivity.this);
-//            audioRecorder.startRecord();
-            setButtonEnabled(connectReadyButton,false);
-            setButtonEnabled(startButton,false);
-            setButtonEnabled(aButton,false);
-            setButtonEnabled(bButton,false);
-            setButtonEnabled(endButton,true);
-            currentP2pThread.removeListener(FlagVar.rangingStartStr);
-            started = true;
-        }
-        else if(msg.equals(FlagVar.aModeStr)){
-            showToast("未能同时开启A、B两种模式。");
-        }
+        currentP2pThread.setMessage(FlagVar.aModeStr);
+        showToast("开始测距。");
+        playThread = new PlayThread(Decoder.lowChirp);
+        playThread.start();
+        decodeThread = new DecodeThread(myHandler, RecordThread.getBufferSize() / 2, true,currentP2pThread);
+        new Thread(decodeThread).start();
+        recordThread = new RecordThread(this);
+        recordThread.start();
+        setButtonEnabled(connectReadyButton,false);
+        setButtonEnabled(startButton,false);
+        setButtonEnabled(aButton,false);
+        setButtonEnabled(bButton,false);
+        setButtonEnabled(endButton,true);
+        currentP2pThread.removeListener(FlagVar.rangingStartStr);
+        aDiffThread = new ADiffThread(decodeThread,myHandler,playThread.getBufferSize());
+        aDiffThread.start();
+        started = true;
     }
-    private void bModeStart(String msg){
-        if(msg.equals(FlagVar.aModeStr)){
-            currentP2pThread.setStr(FlagVar.bModeStr);
-            showToast("开始测距。");
-            playThread = new PlayThread(Decoder.highChirp);
-            playThread.start();
-            decodeThread = new DecodeThread(myHandler, AudioRecorder.getBufferSize() / 2, false,currentP2pThread);
-            new Thread(decodeThread).start();
-            recordThread = new RecordThread(this);
-            recordThread.start();
-//            audioRecorder = new AudioRecorder();
-//            audioRecorder.recordingCallback(MainActivity.this);
-//            audioRecorder.startRecord();
-            setButtonEnabled(connectReadyButton,false);
-            setButtonEnabled(startButton,false);
-            setButtonEnabled(aButton,false);
-            setButtonEnabled(bButton,false);
-            setButtonEnabled(endButton,true);
-            currentP2pThread.removeListener(FlagVar.rangingStartStr);
-            started = true;
-        }
-        else if(msg.equals(FlagVar.bModeStr)){
+    private void bModeStart(){
+        currentP2pThread.setMessage(FlagVar.bModeStr);
+        showToast("开始测距。");
+        playThread = new PlayThread(Decoder.highChirp);
+        playThread.start();
+        decodeThread = new DecodeThread(myHandler, RecordThread.getBufferSize() / 2, false,currentP2pThread);
+        new Thread(decodeThread).start();
+        recordThread = new RecordThread(this);
+        recordThread.start();
+        setButtonEnabled(connectReadyButton,false);
+        setButtonEnabled(startButton,false);
+        setButtonEnabled(aButton,false);
+        setButtonEnabled(bButton,false);
+        setButtonEnabled(endButton,true);
+        currentP2pThread.removeListener(FlagVar.rangingStartStr);
+        bDiffThread = new BDiffThread(decodeThread,myHandler,playThread.getBufferSize());
+        bDiffThread.start();
+        started = true;
+    }
 
-            showToast("未能同时开启A、B两种模式。");
+    private NetworkMsgListener rangingStartlistener = new NetworkMsgListener() {
+        private long startTime;
+        private long delay = FlagVar.playThreadDelay;//毫秒
+        private boolean recved = false;
+        @Override
+        public void handleMsg(String msg) {
+            Common.println("rangingStartlistener");
+            if(aMode){
+                if(msg.equals(FlagVar.bModeStr)){
+                    Common.println("get aModeStr.");
+                    startTime = (new Date()).getTime();
+                    recved = true;
+                }
+                else if(msg.equals(FlagVar.aModeStr)){
+                    showToast("未能同时开启A、B两种模式。");
+                }
+
+            }
+            else if(bMode){
+                if(msg.equals(FlagVar.aModeStr)){
+                    Common.println("get bModeStr.");
+                    startTime = (new Date()).getTime();
+                    recved = true;
+                }
+                else if(msg.equals(FlagVar.bModeStr)){
+                    showToast("未能同时开启A、B两种模式。");
+                }
+
+            }
         }
-    }
+
+        @Override
+        public void doPerTurn(){
+            if(aMode){
+                if(recved){
+                    Common.println("recved");
+                    long time = (new Date()).getTime();
+                    if(time-startTime > delay){
+                        Common.println("aModeStart");
+                        recved = false;
+                        aModeStart();
+                    }
+                }
+            }else if(bMode){
+                if(recved){
+                    Common.println("recved");
+                    long time = (new Date()).getTime();
+                    if(time-startTime > delay){
+                        Common.println("bModeStart");
+                        recved = false;
+                        bModeStart();
+                    }
+                }
+            }
+        }
+    };
 
     private void judgeCanStart(){
         if(isConnected && (aMode || bMode)){
             setButtonEnabled(startButton,true);
-            NetworkMsgListener rangingStartlistener = new NetworkMsgListener() {
-                @Override
-                public void handleMsg(String msg) {
-                    if(aMode){
-                        aModeStart(msg);
-                    }
-                    else if(bMode){
-                        bModeStart(msg);
-                    }
-                }
-            };
+            Common.println("judegeCanStart.");
             currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
             NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
                 @Override
                 public void handleMsg(String msg) {
                     if(msg.equals(FlagVar.rangingEndStr)) {
-                        currentP2pThread.setStr(FlagVar.rangingEndStr);
+                        currentP2pThread.setMessage(FlagVar.rangingEndStr);
                         stopRanging();
                         currentP2pThread.removeListener(FlagVar.rangingEndStr);
                     }
@@ -362,8 +400,9 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         NetworkMsgListener listener = new NetworkMsgListener() {
             @Override
             public void handleMsg(String msg) {
+                Common.println("server start listener.");
                 if(msg.equals(FlagVar.connectionStartStr)){
-                    currentP2pThread.setStr(FlagVar.connectionStartStr);
+                    currentP2pThread.setMessage(FlagVar.connectionStartStr);
                     showToast("服务端连接已打开。");
                     isConnected = true;
                     judgeCanStart();
@@ -382,12 +421,13 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
             @Override
             public void handleMsg(String msg) {
                sleep(10);
+                Common.println("client start listener.");
 
                 clientThread = new ClientThread(myHandler, wifiP2pInfo.groupOwnerAddress.getHostAddress());
                 clientThread.start();
                 currentP2pThread = clientThread;
 
-                currentP2pThread.setStr(FlagVar.connectionStartStr);
+                currentP2pThread.setMessage(FlagVar.connectionStartStr);
                 NetworkMsgListener listener = new NetworkMsgListener() {
                     @Override
                     public void handleMsg(String msg) {
@@ -438,14 +478,20 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            int distance = (int)(FlagVar.cSample*msg.arg1);
-//            textView.setText("sampleCnt:"+msg.arg1+"    distance:"+distance);
-            String str = (String)msg.obj;
-            textView.setText(str);
+            if(msg.arg1 == FlagVar.DEBUG_TEXT) {
+                String str = (String) msg.obj;
+                textView.setText(str);
 
-            if(str.equals(FlagVar.connectionThreadEndStr)){
-                isConnected = false;
-                judgeCanStart();
+                if (str.equals(FlagVar.connectionThreadEndStr)) {
+                    isConnected = false;
+                    judgeCanStart();
+                }
+            }
+            else if(msg.arg1 == FlagVar.DISTANCE_TEXT){
+                int distanceCnt = msg.arg2;
+                int distance = (int) (FlagVar.cSample * distanceCnt);
+                String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance;
+                distanceTextView.setText(str);
             }
 
 
@@ -582,15 +628,20 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         if(recordThread != null){
             recordThread.stopRunning();
             Common.println("record stop.");
-            recordThread.printIsRunning();
         }
         if(decodeThread != null) {
             decodeThread.stopRunning();
             Common.println("decode stop.");
         }
-//        playThread = null;
-//        decodeThread = null;
-//        audioRecorder = null;
+        if(aDiffThread != null){
+            aDiffThread.stopRunning();
+            Common.println("aDiff stop.");
+        }
+        if(bDiffThread != null){
+            bDiffThread.stopRunning();
+            Common.println("bDiff stop.");
+        }
+
     }
 
     @Override

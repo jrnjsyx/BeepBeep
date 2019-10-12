@@ -1,5 +1,7 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
+import java.util.List;
+
 /**
  * Created by cc on 2017/11/29.
  */
@@ -104,5 +106,33 @@ public class Algorithm {
         }
         sum /= (high - low + 1);
         return (short) sum;
+    }
+
+
+
+    public static int findNearestPosOnBase(List<Integer> positions, Integer base){
+        int index = 0;
+        int min = Integer.MAX_VALUE;
+        for(int i=0;i<positions.size();i++){
+            int val = Math.abs(positions.get(i)-base);
+            if(val < min){
+                min = val;
+                index = i;
+            }
+        }
+        return positions.get(index);
+    }
+
+    public static int moveIntoRange(int val, int low, int step){
+        int res = val;
+        while (res < low){
+            res += step;
+        }
+        while (res >= low+step){
+            res -= step;
+        }
+
+        return res;
+
     }
 }

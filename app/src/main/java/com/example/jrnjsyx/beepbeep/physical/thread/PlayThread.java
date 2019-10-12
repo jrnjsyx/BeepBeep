@@ -5,6 +5,7 @@ import android.media.AudioManager;
 import android.media.AudioTrack;
 
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
 import java.util.Arrays;
@@ -19,7 +20,9 @@ public class PlayThread extends Thread {
     private int validBufferLenght = 0;
     private int minBufferSize = 0;
     private short[] buffer;
+    private short[] buffer0;
     private AudioTrack audiotrack;
+    private boolean sendBufferSig;
 
     private final String TAG = "PlayThread";
 
@@ -31,12 +34,20 @@ public class PlayThread extends Thread {
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
         int len = buffer.length>minBufferSize?buffer.length:minBufferSize;
-        validBufferLenght = 4096;
+        validBufferLenght = FlagVar.minPlayBufferSize;
         while(validBufferLenght < len){
             validBufferLenght = validBufferLenght * 2;
         }
         this.buffer = new short[validBufferLenght];
+        buffer0 = new short[validBufferLenght];
+        for(int i=0;i<buffer0.length;i++){
+            buffer0[i] = 0;
+        }
         System.arraycopy(buffer,0,this.buffer,0,buffer.length);
+    }
+
+    public int getBufferSize(){
+        return validBufferLenght;
     }
 
 
@@ -59,13 +70,27 @@ public class PlayThread extends Thread {
 
         audiotrack.play();
         while (isRunning){
-            audiotrack.write(buffer,0,buffer.length);
+            if(sendBufferSig){
+                sendBufferSig = false;
+                writeFully(buffer);
+            }else{
+                sendBufferSig = true;
+                writeFully(buffer0);
+            }
+
         }
 
         try{
             audiotrack.stop();
         }catch (Exception e){
             e.printStackTrace();
+        }
+    }
+
+    private void writeFully(short[] data){
+        int offset = 0;
+        while (offset < data.length){
+            offset += audiotrack.write(data,offset,data.length);
         }
     }
 

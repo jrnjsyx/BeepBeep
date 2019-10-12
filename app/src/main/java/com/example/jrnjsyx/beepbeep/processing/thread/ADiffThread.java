@@ -3,37 +3,88 @@ package com.example.jrnjsyx.beepbeep.processing.thread;
 import android.os.Handler;
 import android.os.Message;
 
-import com.example.jrnjsyx.beepbeep.physical.AudioRecorder;
+import com.example.jrnjsyx.beepbeep.processing.Algorithm;
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
+import java.util.List;
 
-public class ADiffThread implements Runnable{
+
+public class ADiffThread extends Thread{
     private DecodeThread decodeThread;
     private Handler handler;
-    private AudioRecorder audioRecorder;
-    public ADiffThread(DecodeThread decodeThread, AudioRecorder audioRecorder, Handler handler){
+    private boolean isRunning = true;
+    private int minCapacity = FlagVar.minPosDataCapacity;
+    private int step;
+    //A 发出低频chirp信号
+    public ADiffThread(DecodeThread decodeThread, Handler handler,int step){
         this.decodeThread = decodeThread;
         this.handler = handler;
-        this.audioRecorder = audioRecorder;
+        this.step = step;
     }
 
     @Override
     public void run() {
-        while (decodeThread.lowChirpPositions.size() < 2) {
-            try {
-                Thread.sleep(1);
-            }catch (Exception e){
-                e.printStackTrace();
+
+        Common.println("aDiff start.");
+        try{
+            while (isRunning){
+                if(isCapacityOk()) {
+
+                    int basePosNow = decodeThread.basePos;
+                    int remoteBasePosNow = decodeThread.remoteBasePos;
+                    int aStart = computeOnce(decodeThread.lowChirpPositions,basePosNow);
+                    int aEnd = computeOnce(decodeThread.highChirpPositions,basePosNow);
+                    int bStart = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
+                    int bEnd = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
+                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
+                    int unprocessedDistanceCnt = aEnd-aStart-(bEnd-bStart);
+                    int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
+                    Common.println("distanceCnt:"+distanceCnt);
+                    Message msg = new Message();
+                    msg.arg1 = FlagVar.DISTANCE_TEXT;
+                    msg.arg2 = distanceCnt;
+                    handler.sendMessage(msg);
+
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
+
+    public void stopRunning(){
+        isRunning = false;
+    }
+
+    private boolean isCapacityOk(){
+
+        if(decodeThread.lowChirpPositions.size() >= minCapacity &&
+                decodeThread.remoteLowChirpPositions.size() >= minCapacity &&
+                decodeThread.highChirpPositions.size() >= minCapacity &&
+                decodeThread.remoteHighChirpPositions.size() >= minCapacity){
+            Common.println("aDiff capacity ok.  "+decodeThread.lowChirpPositions.size()+" "
+                    +decodeThread.highChirpPositions.size()+" "
+                    +decodeThread.remoteLowChirpPositions.size()+" "
+                    +decodeThread.remoteHighChirpPositions.size());
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    private int computeOnce(List<Integer> data,int base){
+        int res;
+        synchronized (data) {
+            res = Algorithm.findNearestPosOnBase(data,base);
+            while (data.size() >= minCapacity) {
+                data.remove(0);
             }
         }
-        int sampleDiff = 0;
-        synchronized (decodeThread.lowChirpPositions) {
-            sampleDiff = decodeThread.lowChirpPositions.get(1) - decodeThread.lowChirpPositions.get(0);
-        }
-        Message msg = new Message();
-        msg.arg1 = sampleDiff;
-        msg.arg2 = FlagVar.B_BUTTON_ENABLE;
-        handler.sendMessage(msg);
-        audioRecorder.finishRecord();
+        return res;
     }
+
+
 }

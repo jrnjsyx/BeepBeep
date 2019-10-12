@@ -48,16 +48,6 @@ public class Common {
         }
         return true;
     }
-    public static boolean isHostReachable(String host, Integer timeOut) {
-        try {
-            return InetAddress.getByName(host).isReachable(timeOut);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
 
 
 }
