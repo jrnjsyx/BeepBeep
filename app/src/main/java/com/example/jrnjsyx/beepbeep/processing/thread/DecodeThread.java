@@ -31,6 +31,9 @@ public class DecodeThread extends Decoder implements Runnable {
     public Integer remoteBasePos = 0;
     private int lowChirpPosition;
     private int highChirpPosition;
+    private int dataSavedSize = 204800;
+
+    public short[] savedData = new short[dataSavedSize];
 
 
 
@@ -75,6 +78,9 @@ public class DecodeThread extends Decoder implements Runnable {
                         samplesList.remove(0);
 
                     }
+                    if(mLoopCounter<dataSavedSize/processBufferSize) {
+                        System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
+                    }
 
                     synchronized (mLoopCounter) {
                         mLoopCounter++;
@@ -85,6 +91,7 @@ public class DecodeThread extends Decoder implements Runnable {
                     float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
 
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, lowChirpFFT);
+//                    mIndexMaxVarInfo.isReferenceSignalExist = true;
 
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
                         lowChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;
@@ -102,6 +109,8 @@ public class DecodeThread extends Decoder implements Runnable {
                     }
 
                     mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, highChirpFFT);
+//                    mIndexMaxVarInfo.isReferenceSignalExist = true;
+
 
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
                         highChirpPosition = processBufferSize * mLoopCounter + mIndexMaxVarInfo.index;

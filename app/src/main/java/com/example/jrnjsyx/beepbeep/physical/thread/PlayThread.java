@@ -17,38 +17,34 @@ public class PlayThread extends Thread {
      */
 
     private boolean isRunning = true;
-    private int validBufferLenght = 0;
-    private int minBufferSize = 0;
-    private short[] buffer;
-    private short[] buffer0;
+    private static int minBufferSize = 0;
+    private short[] buffer = new short[FlagVar.playBufferSize];
     private AudioTrack audiotrack;
-    private boolean sendBufferSig;
 
     private final String TAG = "PlayThread";
-
-    public PlayThread(short[] buffer){
-
-        // get the minimum buffer size
+    static {
         minBufferSize = AudioTrack.getMinBufferSize(
                 FlagVar.Fs,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
-        int len = buffer.length>minBufferSize?buffer.length:minBufferSize;
-        validBufferLenght = FlagVar.minPlayBufferSize;
-        while(validBufferLenght < len){
-            validBufferLenght = validBufferLenght * 2;
+        if(minBufferSize > FlagVar.playBufferSize){
+            throw new RuntimeException("playBufferSize should be larger than minBufferSize.");
         }
-        this.buffer = new short[validBufferLenght];
-        buffer0 = new short[validBufferLenght];
-        for(int i=0;i<buffer0.length;i++){
-            buffer0[i] = 0;
+    }
+
+    public PlayThread(short[] buffer){
+
+        // get the minimum buffer size
+
+        if(buffer.length > FlagVar.playBufferSize){
+            throw new RuntimeException("playBufferSize should be larger than buffer length.");
+        }
+        for(int i=0;i<this.buffer.length;i++){
+            this.buffer[i] = 0;
         }
         System.arraycopy(buffer,0,this.buffer,0,buffer.length);
     }
 
-    public int getBufferSize(){
-        return validBufferLenght;
-    }
 
 
 
@@ -70,13 +66,7 @@ public class PlayThread extends Thread {
 
         audiotrack.play();
         while (isRunning){
-            if(sendBufferSig){
-                sendBufferSig = false;
-                writeFully(buffer);
-            }else{
-                sendBufferSig = true;
-                writeFully(buffer0);
-            }
+            writeFully(buffer);
 
         }
 
@@ -90,7 +80,14 @@ public class PlayThread extends Thread {
     private void writeFully(short[] data){
         int offset = 0;
         while (offset < data.length){
-            offset += audiotrack.write(data,offset,data.length);
+            int write;
+            if(offset+minBufferSize > data.length){
+                write = audiotrack.write(data, offset, data.length-offset);
+            }else {
+                write = audiotrack.write(data, offset, minBufferSize);
+            }
+            offset += write;
+//            Common.println("audiotrack offset:"+offset+"  write:"+write+" length:"+data.length+" minBufferSize:"+minBufferSize);
         }
     }
 

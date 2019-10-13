@@ -9,10 +9,16 @@ public class FlagVar {
     public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
-    public static int lowFStart = 15500;
-    public static int highFStart = 17500;
+    //该设置效果较好
 //    public static int lowFStart = 11000;
 //    public static int highFStart = 13000;
+//    public static int playBufferSize = 4096*2;
+//    public static int recordBufferSize = 4096*2;
+
+    public static int lowFStart = 16500;
+    public static int highFStart = 19500;
+    public static int playBufferSize = 4096*2;
+    public static int recordBufferSize = 4096*2;
 
     public static String connectionStartStr = "connectionStart";
     public static String connectionThreadEndStr = "connectionEnd";
@@ -28,9 +34,8 @@ public class FlagVar {
     public static int DEBUG_TEXT = 0;
     public static int DISTANCE_TEXT = 1;
     public static int minPosDataCapacity = 3;
-    public static int minPlayBufferSize = 4096;
-    public static int minRecordBufferSize = 4096;
-    public static int playThreadDelay = 70;
+
+    public static int playThreadDelay = 10;
 
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
 

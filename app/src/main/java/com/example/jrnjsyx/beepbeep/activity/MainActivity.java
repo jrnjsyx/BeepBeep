@@ -47,7 +47,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 
-public class MainActivity extends AppCompatActivity implements RecordThread.RecordingCallback,DirectActionListener {
+public class MainActivity extends AppCompatActivity implements DirectActionListener {
 
 
     protected static final String TAG = "MainActivity";
@@ -249,9 +249,9 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.lowChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, RecordThread.getBufferSize() / 2, true,currentP2pThread);
+        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize, true,currentP2pThread);
         new Thread(decodeThread).start();
-        recordThread = new RecordThread(this);
+        recordThread = new RecordThread(decodeThread);
         recordThread.start();
         setButtonEnabled(connectReadyButton,false);
         setButtonEnabled(startButton,false);
@@ -259,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
-        aDiffThread = new ADiffThread(decodeThread,myHandler,playThread.getBufferSize());
+        aDiffThread = new ADiffThread(decodeThread,myHandler,FlagVar.playBufferSize);
         aDiffThread.start();
         started = true;
     }
@@ -268,9 +268,9 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.highChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, RecordThread.getBufferSize() / 2, false,currentP2pThread);
+        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize, false,currentP2pThread);
         new Thread(decodeThread).start();
-        recordThread = new RecordThread(this);
+        recordThread = new RecordThread(decodeThread);
         recordThread.start();
         setButtonEnabled(connectReadyButton,false);
         setButtonEnabled(startButton,false);
@@ -278,7 +278,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
-        bDiffThread = new BDiffThread(decodeThread,myHandler,playThread.getBufferSize());
+        bDiffThread = new BDiffThread(decodeThread,myHandler,FlagVar.playBufferSize);
         bDiffThread.start();
         started = true;
     }
@@ -352,6 +352,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
                         currentP2pThread.setMessage(FlagVar.rangingEndStr);
                         stopRanging();
                         currentP2pThread.removeListener(FlagVar.rangingEndStr);
+
                     }
                 }
             };
@@ -521,18 +522,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
         }
     }
 
-    @Override
-    public void onDataReady(short[] data, int len) {
-//        Common.println("onDataReady");
-//        Common.println("data length:"+data.length+"  len:"+len);
-        short[] data1 = new short[len];
-        short[] data2 = new short[len];
-        for (int i = 0; i < len; i++) {
-            data1[i] = data[2 * i];
-            data2[i] = data[2 * i + 1];
-        }
-        decodeThread.fillSamples(data2);
-    }
+
 
     public boolean onKeyDown(int keyCode, KeyEvent event){
         if (keyCode == KeyEvent.KEYCODE_BACK ) {
@@ -630,6 +620,7 @@ public class MainActivity extends AppCompatActivity implements RecordThread.Reco
             Common.println("record stop.");
         }
         if(decodeThread != null) {
+            Common.saveShorts(decodeThread.savedData,"savedData");
             decodeThread.stopRunning();
             Common.println("decode stop.");
         }
