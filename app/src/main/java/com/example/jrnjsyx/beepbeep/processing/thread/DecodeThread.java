@@ -90,7 +90,7 @@ public class DecodeThread extends Decoder implements Runnable {
                     }
                     float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
 
-                    mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, lowChirpFFT);
+                    mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain2(fft, lowChirpFFT);
 //                    mIndexMaxVarInfo.isReferenceSignalExist = true;
 
                     if(mIndexMaxVarInfo.isReferenceSignalExist) {
@@ -108,7 +108,7 @@ public class DecodeThread extends Decoder implements Runnable {
 
                     }
 
-                    mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain(fft, highChirpFFT);
+                    mIndexMaxVarInfo = getIndexMaxVarInfoFromFDomain2(fft, highChirpFFT);
 //                    mIndexMaxVarInfo.isReferenceSignalExist = true;
 
 

@@ -8,7 +8,7 @@ import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 public class Decoder {
 
     public static short[] lowChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
-    public static short[] highChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.highFStart);
+    public static short[] highChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart);
 
 
     // create variables to store the samples in case frequent new and return
@@ -98,6 +98,13 @@ public class Decoder {
         IndexMaxVarInfo resultInfo = preambleDetection(corr, indexMaxVarInfo);
         return resultInfo;
 
+    }
+
+    public IndexMaxVarInfo getIndexMaxVarInfoFromFDomain2(float[] data1,float[]data2){
+        float[] corr = JniUtils.xcorr(data1,data2);
+        IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,processBufferSize);
+        info.isReferenceSignalExist = true;
+        return info;
     }
 
 

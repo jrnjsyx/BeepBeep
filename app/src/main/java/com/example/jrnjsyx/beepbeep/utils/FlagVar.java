@@ -9,16 +9,18 @@ public class FlagVar {
     public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
+    public static int bChirp2 = 1500;
+    public static int lowFStart = 16000;
+    public static int highFStart = 20000;
+    public static int playBufferSize = 4096*2;
+    public static int recordBufferSize = 4096*2;
     //该设置效果较好
 //    public static int lowFStart = 11000;
 //    public static int highFStart = 13000;
 //    public static int playBufferSize = 4096*2;
 //    public static int recordBufferSize = 4096*2;
 
-    public static int lowFStart = 16500;
-    public static int highFStart = 19500;
-    public static int playBufferSize = 4096*2;
-    public static int recordBufferSize = 4096*2;
+
 
     public static String connectionStartStr = "connectionStart";
     public static String connectionThreadEndStr = "connectionEnd";
