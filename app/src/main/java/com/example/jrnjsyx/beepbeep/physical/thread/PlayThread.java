@@ -20,6 +20,8 @@ public class PlayThread extends Thread {
     private static int minBufferSize = 0;
     private short[] buffer = new short[FlagVar.playBufferSize];
     private AudioTrack audiotrack;
+    private Boolean needAdjust = false;
+    private short[] adjustSamples;
 
     private final String TAG = "PlayThread";
     static {
@@ -45,6 +47,16 @@ public class PlayThread extends Thread {
         System.arraycopy(buffer,0,this.buffer,0,buffer.length);
     }
 
+    public void adjustSample(int cnt){
+        synchronized (needAdjust) {
+            needAdjust = true;
+            adjustSamples = new short[cnt];
+            for(int i=0;i<adjustSamples.length;i++){
+                adjustSamples[i] = 0;
+            }
+        }
+    }
+
 
 
 
@@ -66,6 +78,12 @@ public class PlayThread extends Thread {
 
         audiotrack.play();
         while (isRunning){
+            synchronized (needAdjust){
+                if(needAdjust){
+                    needAdjust = false;
+                    writeFully(adjustSamples);
+                }
+            }
             writeFully(buffer);
 
         }

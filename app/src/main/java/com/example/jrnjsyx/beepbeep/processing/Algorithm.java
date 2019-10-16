@@ -1,5 +1,8 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -7,6 +10,19 @@ import java.util.List;
  */
 
 public class Algorithm {
+
+
+
+    public static int getMedian(List<Integer> nums){
+        if(nums.size() == 0){
+            return 0;
+        }
+        List<Integer> ns = new ArrayList<Integer>();
+        ns.addAll(nums);
+        Collections.sort(ns);
+        return ns.get((ns.size()-1)/2);
+    }
+
     /**
      *
      * @param numbers
@@ -33,6 +49,9 @@ public class Algorithm {
         numbers[low] = temp ;
         return low ;
     }
+
+
+
 
     /**
      * quick sort with designated upper and lower bound of an array
@@ -111,6 +130,7 @@ public class Algorithm {
 
 
     public static int findNearestPosOnBase(List<Integer> positions, Integer base){
+
         int index = 0;
         int min = Integer.MAX_VALUE;
         for(int i=0;i<positions.size();i++){

@@ -102,9 +102,16 @@ public class Decoder {
 
     public IndexMaxVarInfo getIndexMaxVarInfoFromFDomain2(float[] data1,float[]data2){
         float[] corr = JniUtils.xcorr(data1,data2);
-        IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,processBufferSize);
-        info.isReferenceSignalExist = true;
-        return info;
+        float[] fitVals = getFitValsFromCorr(corr);
+        int index = getFitPos(fitVals, corr);
+
+        IndexMaxVarInfo indexMaxVarInfo = new IndexMaxVarInfo();
+        indexMaxVarInfo.index = index;
+        indexMaxVarInfo.fitVal = fitVals[index];
+
+//        IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,processBufferSize);
+        indexMaxVarInfo.isReferenceSignalExist = true;
+        return indexMaxVarInfo;
     }
 
 
@@ -125,7 +132,13 @@ public class Decoder {
             maxCorr = maxCorr<corr[i]?corr[i]:maxCorr;
         }
         float threshold = FlagVar.ratioAvailableThreshold*maxCorr;
-        for(int i=0;i<fitVals.length;i++){
+//        for(int i=0;i<fitVals.length;i++){
+//            if(fitVals[i]>max && corr[i]>threshold){
+//                max = fitVals[i];
+//                index = i;
+//            }
+//        }
+        for(int i=FlagVar.startBeforeMaxCorr;i<FlagVar.startBeforeMaxCorr+processBufferSize;i++){
             if(fitVals[i]>max && corr[i]>threshold){
                 max = fitVals[i];
                 index = i;

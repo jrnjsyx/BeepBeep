@@ -6,7 +6,6 @@ import android.os.Process;
 
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
-import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -72,7 +71,7 @@ public class ServerThread extends WifiP2pThread {
 //                    Common.println("server:"+info);
                     listenersHandleMsg(info);
                     Message msg = new Message();
-                    msg.arg1 = FlagVar.DEBUG_TEXT;
+                    msg.what = FlagVar.NETWORK_TEXT;
                     msg.obj = info;
                     mHandler.sendMessage(msg);
                 }
@@ -86,7 +85,7 @@ public class ServerThread extends WifiP2pThread {
             e.printStackTrace();
         }finally {
             Message msg = new Message();
-            msg.arg1 = FlagVar.DEBUG_TEXT;
+            msg.what = FlagVar.NETWORK_TEXT;
             msg.obj = FlagVar.connectionThreadEndStr;
             mHandler.sendMessage(msg);
             close();

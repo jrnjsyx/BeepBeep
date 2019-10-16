@@ -29,20 +29,20 @@ public class ADiffThread extends Thread{
         Common.println("aDiff start.");
         try{
             while (isRunning){
-                if(isCapacityOk()) {
-
-                    int basePosNow = decodeThread.basePos;
-                    int remoteBasePosNow = decodeThread.remoteBasePos;
-                    int aStart = computeOnce(decodeThread.lowChirpPositions,basePosNow);
-                    int aEnd = computeOnce(decodeThread.highChirpPositions,basePosNow);
-                    int bStart = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
-                    int bEnd = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
-                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
-                    int unprocessedDistanceCnt = aEnd-aStart-(bEnd-bStart);
+                if(decodeThread.dataOk) {
+                    decodeThread.dataOk = false;
+//                    int basePosNow = decodeThread.basePos;
+//                    int remoteBasePosNow = decodeThread.remoteBasePos;
+//                    int aStart = computeOnce(decodeThread.lowChirpPositions,basePosNow);
+//                    int aEnd = computeOnce(decodeThread.highChirpPositions,basePosNow);
+//                    int bStart = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
+//                    int bEnd = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
+//                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
+                    int unprocessedDistanceCnt = decodeThread.highChirpPosition-decodeThread.lowChirpPosition-(decodeThread.remoteHighChirpPosition-decodeThread.remoteLowChirpPosition);
                     int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
                     Common.println("distanceCnt:"+distanceCnt);
                     Message msg = new Message();
-                    msg.arg1 = FlagVar.DISTANCE_TEXT;
+                    msg.what = FlagVar.DISTANCE_TEXT;
                     msg.arg2 = distanceCnt;
                     handler.sendMessage(msg);
 
@@ -60,10 +60,10 @@ public class ADiffThread extends Thread{
 
     private boolean isCapacityOk(){
 
-        if(decodeThread.lowChirpPositions.size() >= minCapacity &&
-                decodeThread.remoteLowChirpPositions.size() >= minCapacity &&
-                decodeThread.highChirpPositions.size() >= minCapacity &&
-                decodeThread.remoteHighChirpPositions.size() >= minCapacity){
+        if(decodeThread.lowChirpPositions.size() >= 1 &&
+                decodeThread.remoteLowChirpPositions.size() >= 1 &&
+                decodeThread.highChirpPositions.size() >= 1 &&
+                decodeThread.remoteHighChirpPositions.size() >= 1){
             Common.println("aDiff capacity ok.  "+decodeThread.lowChirpPositions.size()+" "
                     +decodeThread.highChirpPositions.size()+" "
                     +decodeThread.remoteLowChirpPositions.size()+" "
@@ -78,10 +78,7 @@ public class ADiffThread extends Thread{
     private int computeOnce(List<Integer> data,int base){
         int res;
         synchronized (data) {
-            res = Algorithm.findNearestPosOnBase(data,base);
-            while (data.size() >= minCapacity) {
-                data.remove(0);
-            }
+            res = Algorithm.findNearestPosOnBase(data, base);
         }
         return res;
     }

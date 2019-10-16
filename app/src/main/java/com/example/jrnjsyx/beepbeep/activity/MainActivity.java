@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -57,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     @BindView(R.id.b_button)
     Button bButton;
     @BindView(R.id.text)
-    TextView textView;
+    TextView networkTextView;
     @BindView(R.id.start_button)
     Button startButton;
     @BindView(R.id.connect_button)
@@ -70,6 +71,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     Button endButton;
     @BindView(R.id.distance)
     TextView distanceTextView;
+    @BindView(R.id.debug)
+    TextView debugTextView;
 
     private WifiP2pManager wifiP2pManager;
 
@@ -249,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.lowChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize, true,currentP2pThread);
+        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize,currentP2pThread,playThread,true);
         new Thread(decodeThread).start();
         recordThread = new RecordThread(decodeThread);
         recordThread.start();
@@ -268,7 +271,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.highChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize, false,currentP2pThread);
+        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize,currentP2pThread,playThread,false);
         new Thread(decodeThread).start();
         recordThread = new RecordThread(decodeThread);
         recordThread.start();
@@ -479,20 +482,33 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            if(msg.arg1 == FlagVar.DEBUG_TEXT) {
+            if(msg.what == FlagVar.NETWORK_TEXT) {
                 String str = (String) msg.obj;
-                textView.setText(str);
+                networkTextView.setText(str);
 
                 if (str.equals(FlagVar.connectionThreadEndStr)) {
                     isConnected = false;
                     judgeCanStart();
                 }
             }
-            else if(msg.arg1 == FlagVar.DISTANCE_TEXT){
+            else if(msg.what == FlagVar.DISTANCE_TEXT){
                 int distanceCnt = msg.arg2;
                 int distance = (int) (FlagVar.cSample * distanceCnt);
                 String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance;
                 distanceTextView.setText(str);
+            }
+            else if(msg.what == FlagVar.DEBUG_TEXT){
+                int diff1 = msg.arg1;
+                int diff2 = msg.arg2;
+                String str = "diff:"+diff1+"\nremoteDiff:"+diff2;
+                debugTextView.setText(str);
+                Boolean isAdjusted = (Boolean)msg.obj;
+                if(isAdjusted){
+                    debugTextView.setTextColor(Color.RED);
+                }
+                else{
+                    debugTextView.setTextColor(Color.BLACK);
+                }
             }
 
 

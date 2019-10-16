@@ -28,23 +28,24 @@ public class BDiffThread extends Thread {
         Common.println("bDiff start.");
         try{
             while (isRunning){
-                if(isCapacityOk()) {
-                    Common.println("bDiff capacity ok.  "+decodeThread.highChirpPositions.size()+" "
-                            +decodeThread.lowChirpPositions.size()+" "
-                            +decodeThread.remoteHighChirpPositions.size()+" "
-                            +decodeThread.remoteLowChirpPositions.size());
-                    int basePosNow = decodeThread.basePos;
-                    int remoteBasePosNow = decodeThread.remoteBasePos;
-                    int aStart = computeOnce(decodeThread.highChirpPositions,basePosNow);
-                    int aEnd = computeOnce(decodeThread.lowChirpPositions,basePosNow);
-                    int bStart = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
-                    int bEnd = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
-                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
-                    int unprocessedDistanceCnt = aEnd-aStart-(bEnd-bStart);
+                if(decodeThread.dataOk) {
+                    decodeThread.dataOk = false;
+//                    Common.println("bDiff capacity ok.  "+decodeThread.highChirpPositions.size()+" "
+//                            +decodeThread.lowChirpPositions.size()+" "
+//                            +decodeThread.remoteHighChirpPositions.size()+" "
+//                            +decodeThread.remoteLowChirpPositions.size());
+//                    int basePosNow = decodeThread.basePos;
+//                    int remoteBasePosNow = decodeThread.remoteBasePos;
+//                    int aStart = computeOnce(decodeThread.highChirpPositions,basePosNow);
+//                    int aEnd = computeOnce(decodeThread.lowChirpPositions,basePosNow);
+//                    int bStart = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
+//                    int bEnd = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
+//                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
+                    int unprocessedDistanceCnt = decodeThread.lowChirpPosition-decodeThread.highChirpPosition-(decodeThread.remoteLowChirpPosition-decodeThread.remoteHighChirpPosition);
                     int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
                     Common.println("distanceCnt:"+distanceCnt);
                     Message msg = new Message();
-                    msg.arg1 = FlagVar.DISTANCE_TEXT;
+                    msg.what = FlagVar.DISTANCE_TEXT;
                     msg.arg2 = distanceCnt;
                     handler.sendMessage(msg);
 
@@ -61,10 +62,10 @@ public class BDiffThread extends Thread {
     }
 
     private boolean isCapacityOk(){
-        if(decodeThread.lowChirpPositions.size() >= minCapacity &&
-                decodeThread.remoteLowChirpPositions.size() >= minCapacity &&
-                decodeThread.highChirpPositions.size() >= minCapacity &&
-                decodeThread.remoteHighChirpPositions.size() >= minCapacity){
+        if(decodeThread.lowChirpPositions.size() >= 1 &&
+                decodeThread.remoteLowChirpPositions.size() >= 1 &&
+                decodeThread.highChirpPositions.size() >= 1 &&
+                decodeThread.remoteHighChirpPositions.size() >= 1){
             return true;
         }
         else {
@@ -77,9 +78,6 @@ public class BDiffThread extends Thread {
         int res;
         synchronized (data) {
             res = Algorithm.findNearestPosOnBase(data,base);
-            while (data.size() >= minCapacity) {
-                data.remove(0);
-            }
         }
         return res;
     }
