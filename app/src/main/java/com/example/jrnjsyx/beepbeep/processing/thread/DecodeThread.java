@@ -13,6 +13,7 @@ import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,6 +44,7 @@ public class DecodeThread extends Decoder implements Runnable {
     private int remoteDiff = 0;
     public Boolean skip = false;
     public boolean dataOk = false;
+    private int[] savednormalPos = {0,0,0,0};
 
     public short[] savedData = new short[dataSavedSize];
 
@@ -50,7 +52,7 @@ public class DecodeThread extends Decoder implements Runnable {
 
     private IndexMaxVarInfo mIndexMaxVarInfo;
 
-    public DecodeThread(Handler mHandler, int size, WifiP2pThread currentP2pThread,PlayThread playThread,boolean isLow){
+    public DecodeThread(Handler mHandler, WifiP2pThread currentP2pThread,PlayThread playThread,boolean isLow){
         mIndexMaxVarInfo = new IndexMaxVarInfo();
         samplesList = new LinkedList<short[]>();
         lowChirpPositions = new LinkedList<Integer>();
@@ -60,9 +62,10 @@ public class DecodeThread extends Decoder implements Runnable {
         this.mHandler = mHandler;
         this.playThread = playThread;
         this.isLow = isLow;
-        initialize(size);
+        initialize(FlagVar.recordBufferSize);
         this.currentP2pThread = currentP2pThread;
         currentP2pThread.addListener(FlagVar.recordStr,networkMsgListener);
+
     }
 
     /**
@@ -91,8 +94,10 @@ public class DecodeThread extends Decoder implements Runnable {
                     }
                     short[] buffer = new short[processBufferSize+ FlagVar.startBeforeMaxCorr+ FlagVar.lChirp];
                     synchronized (samplesList) {
-                        System.arraycopy(samplesList.get(0),0,buffer,0,processBufferSize);
-                        System.arraycopy(samplesList.get(1),0,buffer,0, FlagVar.lChirp +FlagVar.startBeforeMaxCorr);
+//                        System.arraycopy(samplesList.get(0),0,buffer,0,processBufferSize);
+//                        System.arraycopy(samplesList.get(1),0,buffer,0, FlagVar.lChirp +FlagVar.startBeforeMaxCorr);
+                        System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
+                        System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
 
                         samplesList.remove(0);
 
@@ -170,7 +175,7 @@ public class DecodeThread extends Decoder implements Runnable {
         return pos;
     }
 
-    private void clearPostisons(List<Integer> positions){
+    private void clearPositions(List<Integer> positions){
         synchronized (positions){
             positions.clear();
         }
@@ -196,6 +201,23 @@ public class DecodeThread extends Decoder implements Runnable {
             remoteHighPos = Algorithm.getMedian(remoteHighChirpPositions);
         }
 
+        int previousDiffSum = Math.abs(savednormalPos[0]+lowPos)
+                +Math.abs(savednormalPos[1]+highPos)
+                +Math.abs(savednormalPos[2]+remoteLowPos)
+                +Math.abs(savednormalPos[3]+remoteHighPos);
+        boolean isAbnormal = !(savednormalPos[0] == 0 && savednormalPos[1] == 0 && savednormalPos[2] == 0 && savednormalPos[3] == 0) && previousDiffSum > FlagVar.diffThreshold;
+        if(isAbnormal){
+            clearPositions(lowChirpPositions);
+            clearPositions(highChirpPositions);
+            clearPositions(remoteHighChirpPositions);
+            clearPositions(remoteLowChirpPositions);
+        }else {
+            savednormalPos[0] = lowPos;
+            savednormalPos[1] = highPos;
+            savednormalPos[2] = remoteLowPos;
+            savednormalPos[3] = remoteHighPos;
+        }
+
         diff = lowPos-highPos;
         remoteDiff = remoteLowPos-remoteHighPos;
         diff = Algorithm.moveIntoRange(diff,0-FlagVar.recordBufferSize/2,FlagVar.recordBufferSize);
@@ -206,13 +228,15 @@ public class DecodeThread extends Decoder implements Runnable {
             offset = (FlagVar.recordBufferSize+diffDiff)/2;
             Common.println("diff:"+diff +" remoteDiff:"+remoteDiff+" offset:"+offset);
             if((diff > 0-FlagVar.lChirp && diff <= FlagVar.lChirp) || (remoteDiff > 0-FlagVar.lChirp && remoteDiff <= FlagVar.lChirp)){
-                clearPostisons(lowChirpPositions);
-                clearPostisons(highChirpPositions);
-                clearPostisons(remoteHighChirpPositions);
-                clearPostisons(remoteLowChirpPositions);
-                playThread.adjustSample(offset);
-                Common.println("adjust.");
-                return true;
+                if(!isAbnormal) {
+                    clearPositions(lowChirpPositions);
+                    clearPositions(highChirpPositions);
+                    clearPositions(remoteHighChirpPositions);
+                    clearPositions(remoteLowChirpPositions);
+                    playThread.adjustSample(offset);
+                    Common.println("adjust.");
+                    return true;
+                }
             }
 
         }

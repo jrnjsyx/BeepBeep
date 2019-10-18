@@ -252,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.lowChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize,currentP2pThread,playThread,true);
+        decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,true);
         new Thread(decodeThread).start();
         recordThread = new RecordThread(decodeThread);
         recordThread.start();
@@ -271,7 +271,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         showToast("开始测距。");
         playThread = new PlayThread(Decoder.highChirp);
         playThread.start();
-        decodeThread = new DecodeThread(myHandler, FlagVar.recordBufferSize,currentP2pThread,playThread,false);
+        decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,false);
         new Thread(decodeThread).start();
         recordThread = new RecordThread(decodeThread);
         recordThread.start();

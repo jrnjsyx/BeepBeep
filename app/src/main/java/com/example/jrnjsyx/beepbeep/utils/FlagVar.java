@@ -39,7 +39,7 @@ public class FlagVar {
     public static int DISTANCE_TEXT = 1;
     public static int DEBUG_TEXT = 2;
     public static int minPosDataCapacity = 5;
-    public static int diffThreshold = 500;
+    public static int diffThreshold = 1000;
 
     public static int playThreadDelay = 10;
 
