@@ -250,7 +250,14 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
         currentP2pThread.setMessage(FlagVar.aModeStr);
         showToast("开始测距。");
-        playThread = new PlayThread(Decoder.lowChirp);
+        if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
+            playThread = new PlayThread(Decoder.lowUpChirp);
+        }
+        else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
+            playThread = new PlayThread(Decoder.lowChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
+            playThread = new PlayThread(Decoder.lowUpChirp);
+        }
         playThread.start();
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,true);
         new Thread(decodeThread).start();
@@ -269,7 +276,13 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     private void bModeStart(){
         currentP2pThread.setMessage(FlagVar.bModeStr);
         showToast("开始测距。");
-        playThread = new PlayThread(Decoder.highChirp);
+        if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
+            playThread = new PlayThread(Decoder.highDownChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
+            playThread = new PlayThread(Decoder.highChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
+            playThread = new PlayThread(Decoder.chirpAndSine);
+        }
         playThread.start();
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,false);
         new Thread(decodeThread).start();
@@ -636,7 +649,9 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             Common.println("record stop.");
         }
         if(decodeThread != null) {
-            Common.saveShorts(decodeThread.savedData,"savedData");
+            if(Common.isDebug) {
+                Common.saveShorts(decodeThread.savedData, "savedData");
+            }
             decodeThread.stopRunning();
             Common.println("decode stop.");
         }
