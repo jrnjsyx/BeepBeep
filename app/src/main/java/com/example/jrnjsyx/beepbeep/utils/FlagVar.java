@@ -12,9 +12,10 @@ public class FlagVar {
     public static int bChirp2 = 1500;
     public static int lowFStart = 16000;
     public static int highFStart = 20000;
-    public static int chirpInterval = 4096*3;
+    public static int chirpInterval = 4000*3;
     public static int playBufferSize = chirpInterval;
     public static int recordBufferSize = chirpInterval;
+    public static int[] frequencies = {14500,14600,14700,14800,14900,15000,15100,15200,15300,15400};
     //该设置效果较好
 //    public static int lowFStart = 11000;
 //    public static int highFStart = 13000;
@@ -40,10 +41,16 @@ public class FlagVar {
     public static int DEBUG_TEXT = 2;
     public static int minPosDataCapacity = 5;
     public static int diffThreshold = 1000;
+    public static int BEEP_BEEP_MODE = 0;
+    public static int MY_ORIGINAL_MODE = 1;
+    //被证明效果不太好
+    public static int MY_NEW_MODE = 2;
+    public static int currentRangingMode = MY_ORIGINAL_MODE;
 
     public static int playThreadDelay = 10;
 
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
+    public static int lSine = 1000;
 
     public static int startBeforeMaxCorr = 200;
     public static int endBeforeMaxCorr = 0;

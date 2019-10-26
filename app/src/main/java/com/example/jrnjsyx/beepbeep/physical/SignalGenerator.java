@@ -1,7 +1,12 @@
 package com.example.jrnjsyx.beepbeep.physical;
 
 
+import com.example.jrnjsyx.beepbeep.processing.Algorithm;
+import com.example.jrnjsyx.beepbeep.processing.IndexMaxVarInfo;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+
+import java.util.LinkedList;
+import java.util.List;
 
 public class SignalGenerator  {
 
@@ -22,6 +27,68 @@ public class SignalGenerator  {
         }
         return samples;
     }
+
+    public static short[] sigAverage(short[]sig1,short[]sig2){
+        if(sig1.length != sig2.length){
+            throw new RuntimeException("两信号长度不匹配。");
+        }
+        short[] ret = new short[sig1.length];
+        for(int i=0;i<sig1.length;i++){
+            ret[i] = (short)(sig1[i]/2+sig2[i]/2);
+        }
+        return ret;
+    }
+
+    public static float[] sigAverage(List<float[]> sigs){
+        if(sigs == null || sigs.size() == 0 ){
+            throw new RuntimeException("sigs不能为空。");
+        }
+        for(int i=0;i< sigs.size()-1;i++){
+            if(sigs.get(i).length != sigs.get(i+1).length){
+                throw new RuntimeException("信号长度不匹配。");
+            }
+        }
+        float[] medRet = new float[sigs.get(0).length];
+        for(float[] sig:sigs){
+            for(int i=0;i<sig.length;i++){
+                medRet[i] += sig[i];
+            }
+        }
+        float[] ret = new float[sigs.get(0).length];
+        for(int i=0;i<ret.length;i++){
+            ret[i] = (float)(medRet[i]/sigs.size());
+        }
+        return ret;
+    }
+
+    public static short[] multipleSineWaveGenerator(int[] frequencies,int fs,int length){
+        List<float[]> sigs = new LinkedList<float[]>();
+        for(int f:frequencies){
+            float[] sig = new float[length];
+            for(int i=0;i<sig.length;i++){
+                sig[i] = (float)Math.cos(2 * Math.PI * f * i / fs);
+            }
+            sigs.add(sig);
+        }
+        float[] sig = sigAverage(sigs);
+        waveformReshaping(sig);
+        short[] ret = new short[length];
+        for(int i=0;i<sig.length;i++){
+            ret[i] = (short)(32767*sig[i]);
+        }
+        return ret;
+
+    }
+
+    public static short[] addSig(short[] sig1,short[] sig2){
+        short[] sig = new short[sig1.length+sig2.length];
+        System.arraycopy(sig1,0,sig,0,sig1.length);
+        System.arraycopy(sig2,0,sig,sig1.length,sig2.length);
+        return sig;
+
+    }
+
+
 
     /**
      * generate down chirp signal

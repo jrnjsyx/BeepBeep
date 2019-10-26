@@ -1,14 +1,20 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
 import com.example.jrnjsyx.beepbeep.physical.SignalGenerator;
-import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
 public class Decoder {
 
-    public static short[] lowChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
-    public static short[] highChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart);
+    public static short[] lowUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
+    public static short[] highDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart);
+    public static short[] lowDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart+FlagVar.bChirp);
+    public static short[] highUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart-FlagVar.bChirp2);
+    public static short[] lowChirp = SignalGenerator.sigAverage(lowUpChirp,lowDownChirp);
+    public static short[] highChirp = SignalGenerator.sigAverage(highUpChirp,highDownChirp);
+    public static short[] sines = SignalGenerator.multipleSineWaveGenerator(FlagVar.frequencies,FlagVar.Fs,FlagVar.lSine);
+    public static short[] chirpAndSine = SignalGenerator.addSig(highDownChirp,sines);
+
 
 
     // create variables to store the samples in case frequent new and return
@@ -18,8 +24,12 @@ public class Decoder {
     public int chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp, FlagVar.lChirp);
 
     //we calculate the fft before decoding in order to reduce computation time.
-    public float[] lowChirpFFT;
-    public float[] highChirpFFT;
+    public float[] lowUpChirpFFT;
+    public float[] lowDownChirpFFT;
+    public float[] highUpChirpFFT;
+    public float[] highDownChirpFFT;
+
+
     protected float maRatio;
     protected float ratio;
 
@@ -31,11 +41,16 @@ public class Decoder {
         chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp +FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
 
         //compute the fft of the preambles and symbols to reduce the computation cost;
-        lowChirpFFT = new float[chirpCorrLen];
-        highChirpFFT = new float[chirpCorrLen];
+        lowUpChirpFFT = new float[chirpCorrLen];
+        lowDownChirpFFT = new float[chirpCorrLen];
+        highDownChirpFFT = new float[chirpCorrLen];
+        highUpChirpFFT = new float[chirpCorrLen];
 
-        lowChirpFFT = JniUtils.fft(normalization(lowChirp), chirpCorrLen);
-        highChirpFFT = JniUtils.fft(normalization(highChirp), chirpCorrLen);
+        lowUpChirpFFT = JniUtils.fft(normalization(lowUpChirp), chirpCorrLen);
+        lowDownChirpFFT = JniUtils.fft(normalization(lowDownChirp), chirpCorrLen);
+        highDownChirpFFT = JniUtils.fft(normalization(highDownChirp), chirpCorrLen);
+        highUpChirpFFT = JniUtils.fft(normalization(highUpChirp), chirpCorrLen);
+
 
 
 
