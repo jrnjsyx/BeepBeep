@@ -14,7 +14,6 @@ public class ADiffThread extends Thread{
     private DecodeThread decodeThread;
     private Handler handler;
     private boolean isRunning = true;
-    private int minCapacity = FlagVar.minPosDataCapacity;
     private int step;
     //A 发出低频chirp信号
     public ADiffThread(DecodeThread decodeThread, Handler handler,int step){

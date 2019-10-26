@@ -17,7 +17,6 @@ public class BDiffThread extends Thread {
     private Handler handler;
     private int step;
     private boolean isRunning = true;
-    private int minCapacity = FlagVar.minPosDataCapacity;
     public BDiffThread(DecodeThread decodeThread, Handler handler,int step){
         this.decodeThread = decodeThread;
         this.handler = handler;

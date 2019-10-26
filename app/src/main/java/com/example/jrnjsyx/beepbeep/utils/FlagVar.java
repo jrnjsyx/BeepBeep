@@ -36,10 +36,14 @@ public class FlagVar {
     public static String recordStr = "recordStr";
     public static String basePosStr = "basePosStr";
 
+    public static int previousIndexThreshold = 300;
+    public static int twiceIndexThreshold = 200;
+
     public static int NETWORK_TEXT = 0;
     public static int DISTANCE_TEXT = 1;
     public static int DEBUG_TEXT = 2;
-    public static int minPosDataCapacity = 5;
+    public static int minPosDataCapacity = 9;
+    public static int adjustThreshold = 4;
     public static int diffThreshold = 1000;
     public static int BEEP_BEEP_MODE = 0;
     public static int MY_ORIGINAL_MODE = 1;

@@ -13,7 +13,6 @@ import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -46,6 +45,14 @@ public class DecodeThread extends Decoder implements Runnable {
     public boolean dataOk = false;
     private int[] savednormalPos = {0,0,0,0};
     private int abnormalCnt = 0;
+    private int adjustCnt = FlagVar.adjustThreshold;
+    private IndexMaxVarInfo infoLow;
+    private IndexMaxVarInfo infoHigh;
+    private int lowIndex = 0;
+    private int highIndex = 0;
+    private int[] previousLowIndexes = {0,0};
+    private int[] previousHighIndexes = {0,0};
+
 
     public short[] savedData = new short[dataSavedSize];
 
@@ -100,67 +107,165 @@ public class DecodeThread extends Decoder implements Runnable {
         }
     }
 
+    private boolean skip(){
+        if(skip){
+            skip = false;
+            synchronized (samplesList) {
+                samplesList.remove(0);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void constructBuffer(){
+        synchronized (samplesList) {
+            System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
+            System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
+
+            samplesList.remove(0);
+
+        }
+        if(mLoopCounter<dataSavedSize/processBufferSize&& Common.isDebug) {
+            System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
+        }
+    }
+
+    private void saveAndSendPosition(int index,List<Integer> indexes,String flag){
+        synchronized (indexes) {
+            indexes.add(index);
+            if(indexes.size() > FlagVar.minPosDataCapacity){
+                indexes.remove(0);
+            }
+        }
+        String msg = flag+" "+index;
+        currentP2pThread.setMessage(msg);
+    }
+
+    private void saveAndSendLowPos(int index){
+        saveAndSendPosition(index,lowChirpPositions,FlagVar.lowPosStr);
+    }
+
+    private void saveAndSendHighPos(int index){
+        saveAndSendPosition(index,highChirpPositions,FlagVar.highPosStr);
+    }
+
+    private void analysisData(){
+        float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
+        infoLow = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT);
+        infoHigh = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT);
+
+        if(isLow){
+            lowIndex = infoLow.index;
+            int lows[] = new int[3];
+            int highs[] = new int[3];
+            for(int i=0;i<lows.length;i++){
+                lows[i] = lowIndex+FlagVar.chirpInterval*(i-1);
+                highs[i] = lows[i]+FlagVar.lChirp;
+            }
+            for(int i=0;i<buffer.length;i++){
+                for(int j=0;j<lows.length;j++){
+                    if(i<highs[j] && i>=lows[j]){
+                        buffer[i] = 0;
+                    }
+                }
+            }
+            float fft2[] = JniUtils.fft(normalization(buffer), chirpCorrLen);
+            IndexMaxVarInfo infoHigh2 = getIndexMaxVarInfoFromFDomain2(fft2, highDownChirpFFT);
+            highIndex = infoHigh2.index;
+//            previousHighIndexes[0] = infoHigh.index;
+//            previousHighIndexes[1] = infoHigh2.index;
+        }
+
+        else{
+            highIndex = infoHigh.index;
+            int lows[] = new int[3];
+            int highs[] = new int[3];
+            for(int i=0;i<lows.length;i++){
+                lows[i] = highIndex+FlagVar.chirpInterval*(i-1);
+                highs[i] = lows[i]+FlagVar.lChirp;
+            }
+            for(int i=0;i<buffer.length;i++){
+                for(int j=0;j<lows.length;j++){
+                    if(i<highs[j] && i>=lows[j]){
+                        buffer[i] = 0;
+                    }
+                }
+            }
+            float fft2[] = JniUtils.fft(normalization(buffer), chirpCorrLen);
+            IndexMaxVarInfo infoLow2 = getIndexMaxVarInfoFromFDomain2(fft2, lowUpChirpFFT);
+            lowIndex = infoLow2.index;
+        }
+
+
+
+
+        lowChirpPosition = processBufferSize * mLoopCounter + lowIndex;
+        highChirpPosition = processBufferSize * mLoopCounter + highIndex;
+    }
+
+    private void backuo(){
+        float fft2[] = JniUtils.fft(normalization(buffer), chirpCorrLen);
+        IndexMaxVarInfo infoHigh2 = getIndexMaxVarInfoFromFDomain2(fft2, highDownChirpFFT);
+        boolean isIndexFromPreviousOk = (distance(infoHigh.index,previousHighIndexes[0]) < FlagVar.previousIndexThreshold);
+        boolean isIndex2FromPreviousOk = (distance(infoHigh2.index,previousHighIndexes[1]) < FlagVar.previousIndexThreshold);
+        if(previousHighIndexes[0] != 0){
+            if(distance(lowIndex,infoHigh.index) < FlagVar.lChirp){
+                if(distance(infoHigh.index,infoHigh2.index) < FlagVar.twiceIndexThreshold){
+                    highIndex = infoHigh.index;
+                }
+                else{
+                    if(isIndexFromPreviousOk && !isIndex2FromPreviousOk){
+                        highIndex = infoHigh.index;
+                    }
+                    else if(isIndex2FromPreviousOk && !isIndexFromPreviousOk){
+                        highIndex = infoHigh2.index;
+                    }
+                    else if(isIndexFromPreviousOk && isIndex2FromPreviousOk){
+                        highIndex = infoHigh2.index;
+                    }
+                    else{
+                        highIndex = infoHigh.index;
+                    }
+
+                }
+            }
+            else{
+                if(isIndexFromPreviousOk && !isIndex2FromPreviousOk){
+                    highIndex = infoHigh.index;
+                }
+                else if(isIndex2FromPreviousOk && !isIndexFromPreviousOk){
+                    highIndex = infoHigh2.index;
+                }
+                else if(isIndexFromPreviousOk && isIndex2FromPreviousOk){
+                    highIndex = infoHigh2.index;
+                }
+                else{
+                    highIndex = infoHigh.index;
+                }
+            }
+        }
+    }
+
+    int distance(int i1,int i2){
+        return Math.abs(Algorithm.moveIntoRange(i1-i2,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval));
+    }
+
+
     private void runOnMyOriginalPerTurn(){
         if (samplesList.size() >= 2) {
-            if(skip){
-                skip = false;
-                synchronized (samplesList) {
-                    samplesList.remove(0);
-                }
+            if(skip()){
                 return;
             }
-            short[] buffer = new short[processBufferSize+ FlagVar.startBeforeMaxCorr+ FlagVar.lChirp];
-            synchronized (samplesList) {
-                System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
-                System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
-
-                samplesList.remove(0);
-
-            }
-            if(mLoopCounter<dataSavedSize/processBufferSize&& Common.isDebug) {
-                System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
-            }
+            constructBuffer();
 
             synchronized (mLoopCounter) {
                 mLoopCounter++;
             }
-            float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
+            analysisData();
 
-            IndexMaxVarInfo infoLow = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT);
-            IndexMaxVarInfo infoHigh = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT);
-
-
-            lowChirpPosition = processBufferSize * mLoopCounter + infoLow.index;
-            highChirpPosition = processBufferSize * mLoopCounter + infoHigh.index;
-
-
-            if(infoLow.isReferenceSignalExist) {
-                synchronized (lowChirpPositions) {
-                    if(lowChirpPositions.size() > 0) {
-//                        Common.println("low chirp pos:" + lowChirpPosition + "    low forward Diff:" + (lowChirpPositions.get(lowChirpPositions.size() - 1) - lowChirpPosition));
-                    }
-                    lowChirpPositions.add(infoLow.index);
-                    if(lowChirpPositions.size() > FlagVar.minPosDataCapacity){
-                        lowChirpPositions.remove(0);
-                    }
-                }
-                String msg = FlagVar.lowPosStr+" "+infoLow.index;
-                currentP2pThread.setMessage(msg);
-            }
-
-            if(infoHigh.isReferenceSignalExist) {
-                synchronized (highChirpPositions) {
-                    if(highChirpPositions.size() > 0) {
-//                        Common.println("high chirp pos:" + highChirpPosition + "    high forward Diff:" + (highChirpPositions.get(highChirpPositions.size() - 1) - highChirpPosition));
-                    }
-                    highChirpPositions.add(infoHigh.index);
-                    if(highChirpPositions.size() > FlagVar.minPosDataCapacity){
-                        highChirpPositions.remove(0);
-                    }
-                }
-                String msg = FlagVar.highPosStr+" "+infoHigh.index;
-                currentP2pThread.setMessage(msg);
-            }
+            saveAndSendLowPos(lowIndex);
+            saveAndSendHighPos(highIndex);
 
             isAdjusted = adJustSamples();
             if(isLow && isAdjusted){
@@ -176,22 +281,10 @@ public class DecodeThread extends Decoder implements Runnable {
 
     private void runOnMyNewPerTurn(){
         if (samplesList.size() >= 2) {
-            if(skip){
-                skip = false;
-                synchronized (samplesList) {
-                    samplesList.remove(0);
-                }
+            if(skip()){
                 return;
             }
-            short[] buffer = new short[processBufferSize+ FlagVar.startBeforeMaxCorr+ FlagVar.lChirp];
-            synchronized (samplesList) {
-                System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
-                System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
-                samplesList.remove(0);
-            }
-            if(mLoopCounter<dataSavedSize/processBufferSize && Common.isDebug) {
-                System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
-            }
+            constructBuffer();
 
             synchronized (mLoopCounter) {
                 mLoopCounter++;
@@ -205,10 +298,10 @@ public class DecodeThread extends Decoder implements Runnable {
 
             int lowDiff = infoLowUp.index-infoLowDown.index;
             int highDiff = infoHighUp.index-infoHighDown.index;
-            lowDiff = Algorithm.moveIntoRange(lowDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval/2);
-            highDiff = Algorithm.moveIntoRange(highDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval/2);
-            int lowIndex = infoLowUp.index-lowDiff/2;
-            int highIndex = infoHighUp.index-highDiff/2;
+            lowDiff = Algorithm.moveIntoRange(lowDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval);
+            highDiff = Algorithm.moveIntoRange(highDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval);
+            lowIndex = infoLowUp.index-lowDiff/2;
+            highIndex = infoHighUp.index-highDiff/2;
 
 
 
@@ -217,30 +310,8 @@ public class DecodeThread extends Decoder implements Runnable {
 //                    constructDiffs();
 
 
-            synchronized (lowChirpPositions) {
-                if(lowChirpPositions.size() > 0) {
-//                    Common.println("low chirp pos:" + lowChirpPosition + "    low forward Diff:" + (lowChirpPositions.get(lowChirpPositions.size() - 1) - lowChirpPosition));
-                }
-                lowChirpPositions.add(lowIndex);
-                if(lowChirpPositions.size() > FlagVar.minPosDataCapacity){
-                    lowChirpPositions.remove(0);
-                }
-                String msg = FlagVar.lowPosStr+" "+lowIndex;
-                currentP2pThread.setMessage(msg);
-            }
-
-
-            synchronized (highChirpPositions) {
-                if(highChirpPositions.size() > 0) {
-//                    Common.println("high chirp pos:" + highChirpPosition + "    high forward Diff:" + (highChirpPositions.get(highChirpPositions.size() - 1) - highChirpPosition));
-                }
-                highChirpPositions.add(highIndex);
-                if(highChirpPositions.size() > FlagVar.minPosDataCapacity){
-                    highChirpPositions.remove(0);
-                }
-                String msg = FlagVar.highPosStr+" "+highIndex;
-                currentP2pThread.setMessage(msg);
-            }
+            saveAndSendLowPos(lowIndex);
+            saveAndSendHighPos(highIndex);
 
 
             isAdjusted = adJustSamples();
@@ -256,68 +327,19 @@ public class DecodeThread extends Decoder implements Runnable {
     }
     private void runOnBeepbeepPerTurn(){
         if (samplesList.size() >= 2) {
-            if(skip){
-                skip = false;
-                synchronized (samplesList) {
-                    samplesList.remove(0);
-                }
+            if(skip()){
                 return;
             }
-            short[] buffer = new short[processBufferSize+ FlagVar.startBeforeMaxCorr+ FlagVar.lChirp];
-            synchronized (samplesList) {
-//                        System.arraycopy(samplesList.get(0),0,buffer,0,processBufferSize);
-//                        System.arraycopy(samplesList.get(1),0,buffer,0, FlagVar.lChirp +FlagVar.startBeforeMaxCorr);
-                System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
-                System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
-
-                samplesList.remove(0);
-
-            }
-            if(mLoopCounter<dataSavedSize/processBufferSize&& Common.isDebug) {
-                System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
-            }
+            constructBuffer();
 
             synchronized (mLoopCounter) {
                 mLoopCounter++;
             }
-            float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
-
-            IndexMaxVarInfo infoLow = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT);
-            IndexMaxVarInfo infoHigh = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT);
+            analysisData();
 
 
-            lowChirpPosition = processBufferSize * mLoopCounter + infoLow.index;
-            highChirpPosition = processBufferSize * mLoopCounter + infoHigh.index;
-//                    constructDiffs();
-
-
-            if(infoLow.isReferenceSignalExist) {
-                synchronized (lowChirpPositions) {
-                    if(lowChirpPositions.size() > 0) {
-//                        Common.println("low chirp pos:" + lowChirpPosition + "    low forward Diff:" + (lowChirpPositions.get(lowChirpPositions.size() - 1) - lowChirpPosition));
-                    }
-                    lowChirpPositions.add(infoLow.index);
-                    if(lowChirpPositions.size() > FlagVar.minPosDataCapacity){
-                        lowChirpPositions.remove(0);
-                    }
-                }
-                String msg = FlagVar.lowPosStr+" "+infoLow.index;
-                currentP2pThread.setMessage(msg);
-            }
-
-            if(infoHigh.isReferenceSignalExist) {
-                synchronized (highChirpPositions) {
-                    if(highChirpPositions.size() > 0) {
-//                        Common.println("high chirp pos:" + highChirpPosition + "    high forward Diff:" + (highChirpPositions.get(highChirpPositions.size() - 1) - highChirpPosition));
-                    }
-                    highChirpPositions.add(infoHigh.index);
-                    if(highChirpPositions.size() > FlagVar.minPosDataCapacity){
-                        highChirpPositions.remove(0);
-                    }
-                }
-                String msg = FlagVar.highPosStr+" "+infoHigh.index;
-                currentP2pThread.setMessage(msg);
-            }
+            saveAndSendLowPos(lowIndex);
+            saveAndSendHighPos(highIndex);
 
             isAdjusted = adJustSamples();
             if(isLow && isAdjusted){
@@ -369,10 +391,10 @@ public class DecodeThread extends Decoder implements Runnable {
                 +Math.abs(savednormalPos[3]-remoteHighPos);
         boolean isAbnormal = !(savednormalPos[0] == 0 && savednormalPos[1] == 0 && savednormalPos[2] == 0 && savednormalPos[3] == 0) && previousDiffSum > FlagVar.diffThreshold && abnormalCnt < 3;
         if(isAbnormal){
-            clearPositions(lowChirpPositions);
-            clearPositions(highChirpPositions);
-            clearPositions(remoteHighChirpPositions);
-            clearPositions(remoteLowChirpPositions);
+//            clearPositions(lowChirpPositions);
+//            clearPositions(highChirpPositions);
+//            clearPositions(remoteHighChirpPositions);
+//            clearPositions(remoteLowChirpPositions);
             abnormalCnt++;
         }else {
             abnormalCnt = 0;
@@ -395,6 +417,9 @@ public class DecodeThread extends Decoder implements Runnable {
         }
 
         int offset = 0;
+        if(adjustCnt > 0){
+            adjustCnt--;
+        }
         if(remoteHighChirpPositions.size() >= 1 && lowChirpPositions.size() >= 1){
             //应该是减还是加？
 //            int diffDiff = diff-remoteDiff;
@@ -412,7 +437,7 @@ public class DecodeThread extends Decoder implements Runnable {
             Common.println("diff:"+diff +" remoteDiff:"+remoteDiff+" offset:"+offset+"  needAdjust:"+needAdjust+"  isAbnormal:"+isAbnormal);
 
             if(needAdjust){
-                if(!isAbnormal) {
+                if(!isAbnormal && adjustCnt == 0) {
                     clearPositions(lowChirpPositions);
                     clearPositions(highChirpPositions);
                     clearPositions(remoteHighChirpPositions);
@@ -422,6 +447,7 @@ public class DecodeThread extends Decoder implements Runnable {
                     savednormalPos[2] = 0;
                     savednormalPos[3] = 0;
                     playThread.adjustSample(offset);
+                    adjustCnt = FlagVar.adjustThreshold;
                     Common.println("adjust.");
                     return true;
                 }

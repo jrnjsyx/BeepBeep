@@ -32,6 +32,7 @@ public class Decoder {
 
     protected float maRatio;
     protected float ratio;
+    protected short[] buffer;
 
 
 
@@ -50,6 +51,7 @@ public class Decoder {
         lowDownChirpFFT = JniUtils.fft(normalization(lowDownChirp), chirpCorrLen);
         highDownChirpFFT = JniUtils.fft(normalization(highDownChirp), chirpCorrLen);
         highUpChirpFFT = JniUtils.fft(normalization(highUpChirp), chirpCorrLen);
+        buffer = new short[processBufferSize+ FlagVar.startBeforeMaxCorr+ FlagVar.lChirp];
 
 
 
@@ -184,7 +186,7 @@ public class Decoder {
         }
         for(int i=FlagVar.startBeforeMaxCorr;i<fitVals.length;i++){
             fitVals[i] = corr[i]*(FlagVar.startBeforeMaxCorr-FlagVar.endBeforeMaxCorr)/fitVals[i];
-            fitVals[i] = fitVals[i]*corr[i];
+//            fitVals[i] = fitVals[i]*corr[i];
         }
         return fitVals;
     }
