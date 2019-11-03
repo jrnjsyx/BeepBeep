@@ -27,6 +27,7 @@ import android.widget.Toast;
 import com.example.jrnjsyx.beepbeep.R;
 import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
 import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread;
+import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
 import com.example.jrnjsyx.beepbeep.processing.thread.ADiffThread;
 import com.example.jrnjsyx.beepbeep.processing.thread.BDiffThread;
@@ -41,6 +42,8 @@ import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ClientThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ServerThread;
 
+import java.text.DecimalFormat;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 
@@ -112,8 +115,24 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        test();
         initParams();
 
+    }
+
+    private void test(){
+        if(Common.isDebug){
+            int[] data1 = new int[100];
+            float[] data2 = new float[data1.length];
+            for(int i=0;i<data1.length;i++){
+                data1[i] = (int) (1000*Math.random());
+                data2[i] = 1000*(float)Math.random();
+            }
+            Algorithm.quickSort(data1,0,data1.length-1);
+            Algorithm.quickSort(data2,0,data1.length-1);
+            System.out.println(Arrays.toString(data1));
+            System.out.println(Arrays.toString(data2));
+        }
     }
 
     private View.OnClickListener onClickListener = new View.OnClickListener() {
@@ -254,7 +273,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             playThread = new PlayThread(Decoder.lowUpChirp);
         }
         else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
-            playThread = new PlayThread(Decoder.lowChirp);
+//            playThread = new PlayThread(Decoder.lowChirp);
+            playThread = new PlayThread(Decoder.lowUpChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
         }
@@ -279,6 +299,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
             playThread = new PlayThread(Decoder.highDownChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
+//            playThread = new PlayThread(Decoder.highDownChirp);
             playThread = new PlayThread(Decoder.highChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
             playThread = new PlayThread(Decoder.chirpAndSine);
@@ -489,6 +510,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         }
     }
 
+    private DecimalFormat decimalFormat = new DecimalFormat("##0.0");
 
     public Handler myHandler = new Handler(){
 
@@ -507,7 +529,9 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             else if(msg.what == FlagVar.DISTANCE_TEXT){
                 int distanceCnt = msg.arg2;
                 int distance = (int) (FlagVar.cSample * distanceCnt);
-                String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance;
+
+                String speedStr = decimalFormat.format((float)msg.obj);
+                String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance+"\nspeed:"+speedStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){

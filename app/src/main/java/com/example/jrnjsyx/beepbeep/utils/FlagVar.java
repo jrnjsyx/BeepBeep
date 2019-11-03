@@ -16,6 +16,10 @@ public class FlagVar {
     public static int playBufferSize = chirpInterval;
     public static int recordBufferSize = chirpInterval;
     public static int[] frequencies = {14500,14600,14700,14800,14900,15000,15100,15200,15300,15400};
+//    public static int[] frequencies = {12500,12600,12700,12800,12900,13000,13100,13200,13300,13400};
+//    public static int[] frequencies = {12500,12700,12900,13100,13300};
+//    public static int[] frequencies = {8500,8700,8900,9100,9300};
+//    public static int[] frequencies = {8500,8600,8700,8800,8900,9000,9100,9200,9300,9400};
     //该设置效果较好
 //    public static int lowFStart = 11000;
 //    public static int highFStart = 13000;
@@ -34,7 +38,9 @@ public class FlagVar {
     public static String skipStr = "skipStr";
     public static String highPosStr = "highPosStr";
     public static String recordStr = "recordStr";
-    public static String basePosStr = "basePosStr";
+    public static String speedStr = "speedStr";
+
+
 
     public static int previousIndexThreshold = 300;
     public static int twiceIndexThreshold = 200;
@@ -47,9 +53,11 @@ public class FlagVar {
     public static int diffThreshold = 1000;
     public static int BEEP_BEEP_MODE = 0;
     public static int MY_ORIGINAL_MODE = 1;
-    //被证明效果不太好
     public static int MY_NEW_MODE = 2;
-    public static int currentRangingMode = MY_ORIGINAL_MODE;
+    public static int currentRangingMode = MY_NEW_MODE;
+    public static int speedEstimateBufferLength = 65536;
+    public static int speedEstimateRangeF = 40;
+    public static int soundSpeed = 34000;
 
     public static int playThreadDelay = 10;
 

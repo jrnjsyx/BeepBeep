@@ -46,6 +46,7 @@ public class BDiffThread extends Thread {
                     Message msg = new Message();
                     msg.what = FlagVar.DISTANCE_TEXT;
                     msg.arg2 = distanceCnt;
+                    msg.obj = decodeThread.speed;
                     handler.sendMessage(msg);
 
 
