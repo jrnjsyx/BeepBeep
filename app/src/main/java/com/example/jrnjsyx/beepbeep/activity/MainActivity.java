@@ -42,6 +42,13 @@ import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ClientThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ServerThread;
 
+import org.ejml.data.DMatrixRMaj;
+import org.ejml.data.FMatrixRMaj;
+import org.ejml.data.MatrixType;
+import org.ejml.equation.Equation;
+import org.ejml.equation.Sequence;
+import org.ejml.simple.SimpleMatrix;
+
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -103,7 +110,6 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     static int CLIENT_MODE = 2;
     static int NO_SERVER_CLIENT_MODE = 0;
     private boolean isConnected = false;
-    //wifi直连后，是否接收到对面发来的确认信号
     private int aCnt = 0;
     private int bCnt = 0;
     private boolean isAppReady = false;
@@ -121,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     }
 
     private void test(){
+        System.out.println("test");
         if(Common.isDebug){
             int[] data1 = new int[100];
             float[] data2 = new float[data1.length];
@@ -132,6 +139,20 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             Algorithm.quickSort(data2,0,data1.length-1);
             System.out.println(Arrays.toString(data1));
             System.out.println(Arrays.toString(data2));
+            DMatrixRMaj x = new DMatrixRMaj(3,3);
+            DMatrixRMaj y = new DMatrixRMaj(3,3);
+            x.set(0,0,2.0);
+            x.set(1,1,4.0);
+            x.set(2,2,5.0);
+            System.out.println(x);
+            Equation eq = new Equation();
+            eq.alias(x,"x",y,"y");
+
+            Sequence predictX = eq.compile("x = inv(x)");
+            predictX.perform();
+            System.out.println(x);
+
+
         }
     }
 
@@ -527,11 +548,15 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 }
             }
             else if(msg.what == FlagVar.DISTANCE_TEXT){
-                int distanceCnt = msg.arg2;
-                int distance = (int) (FlagVar.cSample * distanceCnt);
+                Bundle bundle = msg.getData();
+                int distanceCnt = bundle.getInt("oldDistanceCnt");
+                float oldDistance = FlagVar.cSample * distanceCnt;
+                String oldDistanceStr = decimalFormat.format(oldDistance);
+                String oldSpeedStr = decimalFormat.format(bundle.getFloat("oldSpeed"));
 
-                String speedStr = decimalFormat.format((float)msg.obj);
-                String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance+"\nspeed:"+speedStr;
+                String speedStr = decimalFormat.format(bundle.getFloat("speed"));
+                String distanceStr = decimalFormat.format(bundle.getFloat("distance"));
+                String str = "distanceCnt:"+distanceCnt+"\noldDistance:"+oldDistanceStr+"\noldSpeed:"+oldSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){

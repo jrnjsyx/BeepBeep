@@ -13,6 +13,7 @@ public class FlagVar {
     public static int lowFStart = 16000;
     public static int highFStart = 20000;
     public static int chirpInterval = 4000*3;
+    public static int chirpIntervalTime = chirpInterval/Fs;
     public static int playBufferSize = chirpInterval;
     public static int recordBufferSize = chirpInterval;
     public static int[] frequencies = {14500,14600,14700,14800,14900,15000,15100,15200,15300,15400};

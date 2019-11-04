@@ -1,5 +1,6 @@
 package com.example.jrnjsyx.beepbeep.processing.thread;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 
@@ -7,7 +8,9 @@ import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
-import java.util.List;
+import org.ejml.data.DMatrixRMaj;
+import org.ejml.equation.Equation;
+import org.ejml.equation.Sequence;
 
 
 public class ADiffThread extends Thread{
@@ -15,11 +18,48 @@ public class ADiffThread extends Thread{
     private Handler handler;
     private boolean isRunning = true;
     private int step;
+    private DMatrixRMaj F = new DMatrixRMaj(2,2);
+    private DMatrixRMaj x = new DMatrixRMaj(2,1);
+    private DMatrixRMaj z = new DMatrixRMaj(2,1);
+    private DMatrixRMaj P = new DMatrixRMaj(2,2);
+    private DMatrixRMaj Q = new DMatrixRMaj(2,2);
+    private DMatrixRMaj R = new DMatrixRMaj(2,2);
+    private DMatrixRMaj K = new DMatrixRMaj(2,2);
+    Sequence predictX;
+    Sequence predictP;
+    Sequence updateK;
+    Sequence updateX;
+    Sequence updateP;
+
+    Equation eq = new Equation();
+
+    private float distance;
+    private float speed;
     //A 发出低频chirp信号
     public ADiffThread(DecodeThread decodeThread, Handler handler,int step){
         this.decodeThread = decodeThread;
         this.handler = handler;
         this.step = step;
+        F.set(0,0,1);
+        F.set(1,1,1);
+        F.set(0,1,FlagVar.chirpIntervalTime);
+        x.set(0,0,100);
+        x.set(1,0,2);
+        P.set(0,0,10);
+        P.set(1,1,10);
+        Q.set(0,0,5);
+        Q.set(1,1,5);
+        R.set(0,0,10);
+        R.set(1,1,10);
+        eq.alias(x,"x",F,"F",z,"z",P,"P",Q,"Q",R,"R",K,"K");
+        predictX = eq.compile("x = F*x");
+        predictP = eq.compile("P = F*P*F' + Q");
+        updateK = eq.compile("K = P*inv( P + R )");
+        updateX = eq.compile("x = x + K*(z-x)");
+        updateP = eq.compile("P = P-K*P");
+
+
+
     }
 
     @Override
@@ -30,20 +70,26 @@ public class ADiffThread extends Thread{
             while (isRunning){
                 if(decodeThread.dataOk) {
                     decodeThread.dataOk = false;
-//                    int basePosNow = decodeThread.basePos;
-//                    int remoteBasePosNow = decodeThread.remoteBasePos;
-//                    int aStart = computeOnce(decodeThread.lowChirpPositions,basePosNow);
-//                    int aEnd = computeOnce(decodeThread.highChirpPositions,basePosNow);
-//                    int bStart = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
-//                    int bEnd = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
-//                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
                     int unprocessedDistanceCnt = decodeThread.highChirpPosition-decodeThread.lowChirpPosition-(decodeThread.remoteHighChirpPosition-decodeThread.remoteLowChirpPosition);
                     int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
                     Common.println("distanceCnt:"+distanceCnt);
+                    distance = FlagVar.cSample * distanceCnt;
+                    speed = decodeThread.speed;
+
+                    if(FlagVar.currentRangingMode != FlagVar.BEEP_BEEP_MODE) {
+                        computeUsingKalman();
+                    }
+
+
                     Message msg = new Message();
+                    Bundle bundle = new Bundle();
+                    bundle.putFloat("oldSpeed",decodeThread.speed);
+                    bundle.putInt("oldDistanceCnt",distanceCnt);
+                    bundle.putFloat("speed",speed);
+                    bundle.putFloat("distance",distance);
+
                     msg.what = FlagVar.DISTANCE_TEXT;
-                    msg.arg2 = distanceCnt;
-                    msg.obj = decodeThread.speed;
+                    msg.setData(bundle);
                     handler.sendMessage(msg);
 
                 }
@@ -58,29 +104,18 @@ public class ADiffThread extends Thread{
         isRunning = false;
     }
 
-    private boolean isCapacityOk(){
+    private void computeUsingKalman(){
+        z.set(0,0,distance);
+        z.set(1,0,speed);
+        predictX.perform();
+        predictP.perform();
+        updateK.perform();
+        updateX.perform();
+        updateP.perform();
+        distance = (float) x.get(0,0);
+        speed = (float)x.get(1,0);
 
-        if(decodeThread.lowChirpPositions.size() >= 1 &&
-                decodeThread.remoteLowChirpPositions.size() >= 1 &&
-                decodeThread.highChirpPositions.size() >= 1 &&
-                decodeThread.remoteHighChirpPositions.size() >= 1){
-            Common.println("aDiff capacity ok.  "+decodeThread.lowChirpPositions.size()+" "
-                    +decodeThread.highChirpPositions.size()+" "
-                    +decodeThread.remoteLowChirpPositions.size()+" "
-                    +decodeThread.remoteHighChirpPositions.size());
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
 
-    private int computeOnce(List<Integer> data,int base){
-        int res;
-        synchronized (data) {
-            res = Algorithm.findNearestPosOnBase(data, base);
-        }
-        return res;
     }
 
 
