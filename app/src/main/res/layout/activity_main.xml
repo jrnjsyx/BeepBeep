@@ -1,97 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/main_linear"
-    android:clickable="true"
+    android:padding="10dp"
     tools:context=".activity.MainActivity">
-
     <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <Button
-            android:id="@+id/a_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="phone A"
-            android:enabled="false"
-            />
-
-        <Button
-            android:id="@+id/b_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="phone B"
-            android:enabled="false"
-            />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/connect_button"
-            android:text="connect"
-            android:enabled="false"/>
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/connect_ready_button"
-            android:enabled="false"
-            android:text="send test info"/>
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
+        android:id="@+id/main_linear"
+        android:clickable="true"
         >
 
-        <Button
-            android:id="@+id/start_button"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/a_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="phone A"
+                android:enabled="false"
+                />
+
+            <Button
+                android:id="@+id/b_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="phone B"
+                android:enabled="false"
+                />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/connect_button"
+                android:text="connect"
+                android:enabled="false"/>
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/connect_ready_button"
+                android:enabled="false"
+                android:text="send test info"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="start"
-            android:enabled="false"
+            >
+
+            <Button
+                android:id="@+id/start_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="start"
+                android:enabled="false"
+                />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/end_button"
+                android:text="end"
+                android:enabled="false"/>
+        </LinearLayout>
+
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/textAll"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hello World!"
+                android:id="@+id/text"/>
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="distance"
+                android:id="@+id/debug"/>
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="distance"
+                android:id="@+id/distance"/>
+        </LinearLayout>
+
+        <com.jjoe64.graphview.GraphView
+            android:layout_width="match_parent"
+            android:layout_height="200dip"
+            android:id="@+id/distanceGraph"
+            android:visibility="gone"
             />
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/end_button"
-            android:text="end"
-            android:enabled="false"/>
+        <com.jjoe64.graphview.GraphView
+            android:layout_width="match_parent"
+            android:layout_height="200dip"
+            android:id="@+id/speedGraph"
+            android:visibility="gone"
+
+            />
+
+
     </LinearLayout>
-
-
-
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        android:id="@+id/text"/>
-
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="distance"
-        android:id="@+id/debug"/>
-
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="distance"
-        android:id="@+id/distance"/>
-
-</LinearLayout>
+</ScrollView>

@@ -62,4 +62,5 @@ dependencies {
     implementation files('libs/ejml-v0.38-libs/ejml-simple-0.38-sources.jar')
     implementation files('libs/ejml-v0.38-libs/ejml-zdense-0.38.jar')
     implementation files('libs/ejml-v0.38-libs/ejml-zdense-0.38-sources.jar')
+    implementation files('libs/GraphView-4.2.1.jar')
 }

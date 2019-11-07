@@ -22,8 +22,8 @@ public class ADiffThread extends Thread{
     private DMatrixRMaj x = new DMatrixRMaj(2,1);
     private DMatrixRMaj z = new DMatrixRMaj(2,1);
     private DMatrixRMaj P = new DMatrixRMaj(2,2);
-    private DMatrixRMaj Q = new DMatrixRMaj(2,2);
-    private DMatrixRMaj R = new DMatrixRMaj(2,2);
+    private DMatrixRMaj Q;
+    private DMatrixRMaj R;
     private DMatrixRMaj K = new DMatrixRMaj(2,2);
     Sequence predictX;
     Sequence predictP;
@@ -47,10 +47,9 @@ public class ADiffThread extends Thread{
         x.set(1,0,2);
         P.set(0,0,10);
         P.set(1,1,10);
-        Q.set(0,0,5);
-        Q.set(1,1,5);
-        R.set(0,0,10);
-        R.set(1,1,10);
+        Q = FlagVar.Q;
+        R = FlagVar.R;
+
         eq.alias(x,"x",F,"F",z,"z",P,"P",Q,"Q",R,"R",K,"K");
         predictX = eq.compile("x = F*x");
         predictP = eq.compile("P = F*P*F' + Q");
@@ -107,6 +106,9 @@ public class ADiffThread extends Thread{
     private void computeUsingKalman(){
         z.set(0,0,distance);
         z.set(1,0,speed);
+        Q = FlagVar.Q;
+        R = FlagVar.R;
+        eq.alias(Q,"Q",R,"R");
         predictX.perform();
         predictP.perform();
         updateK.perform();
