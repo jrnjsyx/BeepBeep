@@ -29,17 +29,6 @@ public class BDiffThread extends Thread {
             while (isRunning){
                 if(decodeThread.dataOk) {
                     decodeThread.dataOk = false;
-//                    Common.println("bDiff capacity ok.  "+decodeThread.highChirpPositions.size()+" "
-//                            +decodeThread.lowChirpPositions.size()+" "
-//                            +decodeThread.remoteHighChirpPositions.size()+" "
-//                            +decodeThread.remoteLowChirpPositions.size());
-//                    int basePosNow = decodeThread.basePos;
-//                    int remoteBasePosNow = decodeThread.remoteBasePos;
-//                    int aStart = computeOnce(decodeThread.highChirpPositions,basePosNow);
-//                    int aEnd = computeOnce(decodeThread.lowChirpPositions,basePosNow);
-//                    int bStart = computeOnce(decodeThread.remoteHighChirpPositions,remoteBasePosNow);
-//                    int bEnd = computeOnce(decodeThread.remoteLowChirpPositions,remoteBasePosNow);
-//                    Common.println("aStart:"+aStart+" aEnd:"+aEnd+" bStart:"+bStart+" bEnd:"+bEnd);
                     int unprocessedDistanceCnt = decodeThread.lowChirpPosition-decodeThread.highChirpPosition-(decodeThread.remoteLowChirpPosition-decodeThread.remoteHighChirpPosition);
                     int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
                     Common.println("distanceCnt:"+distanceCnt);

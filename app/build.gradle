@@ -17,6 +17,11 @@ android {
             }
         }
     }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
     externalNativeBuild{
         cmake{
             path "CMakeLists.txt"
@@ -41,4 +46,21 @@ dependencies {
     implementation files('libs/JTransforms-3.1-with-dependencies.jar')
     implementation 'com.jakewharton:butterknife:8.8.1'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+    implementation files('libs/ejml-v0.38-libs/ejml-cdense-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-cdense-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-core-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-core-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-ddense-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-ddense-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-dsparse-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-dsparse-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-experimental-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-experimental-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-fdense-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-fdense-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-simple-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-simple-0.38-sources.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-zdense-0.38.jar')
+    implementation files('libs/ejml-v0.38-libs/ejml-zdense-0.38-sources.jar')
+    implementation files('libs/GraphView-4.2.1.jar')
 }

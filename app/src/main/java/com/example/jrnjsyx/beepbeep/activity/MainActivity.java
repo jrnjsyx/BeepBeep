@@ -1,8 +1,11 @@
 package com.example.jrnjsyx.beepbeep.activity;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -18,8 +21,13 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.SubMenu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,11 +49,23 @@ import com.example.jrnjsyx.beepbeep.wifip2p.thread.ConnetJudgeThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ClientThread;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.ServerThread;
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
+
+import org.ejml.data.DMatrixRMaj;
+import org.ejml.data.FMatrixRMaj;
+import org.ejml.data.MatrixType;
+import org.ejml.equation.Equation;
+import org.ejml.equation.Sequence;
+import org.ejml.simple.SimpleMatrix;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.Queue;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -76,6 +96,17 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     TextView distanceTextView;
     @BindView(R.id.debug)
     TextView debugTextView;
+    @BindView(R.id.textAll)
+    LinearLayout textLinear;
+    private EditText q11EditText;
+    private EditText q12EditText;
+    private EditText q22EditText;
+    private EditText r11EditText;
+    private EditText r12EditText;
+    private EditText r22EditText;
+
+    private GraphView distanceGraph;
+    private GraphView speedGraph;
 
     private WifiP2pManager wifiP2pManager;
 
@@ -103,11 +134,22 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     static int CLIENT_MODE = 2;
     static int NO_SERVER_CLIENT_MODE = 0;
     private boolean isConnected = false;
-    //wifi直连后，是否接收到对面发来的确认信号
     private int aCnt = 0;
     private int bCnt = 0;
     private boolean isAppReady = false;
     private boolean started = false;
+
+    private LineGraphSeries<DataPoint> oldDistances = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> oldSpeeds = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> distances = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> speeds = new LineGraphSeries<>();
+    private int graphSize = 50;
+    private DataPoint[] oldDistancePoints = new DataPoint[graphSize];
+    private DataPoint[] oldSpeedPoints = new DataPoint[graphSize];
+    private DataPoint[] distancePoints = new DataPoint[graphSize];
+    private DataPoint[] speedPoints = new DataPoint[graphSize];
+
+    private int graphCnt = 0;
 
 
     @Override
@@ -121,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     }
 
     private void test(){
+        System.out.println("test");
         if(Common.isDebug){
             int[] data1 = new int[100];
             float[] data2 = new float[data1.length];
@@ -132,6 +175,20 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             Algorithm.quickSort(data2,0,data1.length-1);
             System.out.println(Arrays.toString(data1));
             System.out.println(Arrays.toString(data2));
+            DMatrixRMaj x = new DMatrixRMaj(3,3);
+            DMatrixRMaj y = new DMatrixRMaj(3,3);
+            x.set(0,0,2.0);
+            x.set(1,1,4.0);
+            x.set(2,2,5.0);
+            System.out.println(x);
+            Equation eq = new Equation();
+            eq.alias(x,"x",y,"y");
+
+            Sequence predictX = eq.compile("x = inv(x)");
+            predictX.perform();
+            System.out.println(x);
+
+
         }
     }
 
@@ -176,6 +233,16 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
     //初始化参数
     public void initParams(){
+        distanceGraph = (GraphView)findViewById(R.id.distanceGraph);
+        speedGraph = (GraphView)findViewById(R.id.speedGraph);
+        distanceGraph.addSeries(distances);
+        distanceGraph.addSeries(oldDistances);
+        speedGraph.addSeries(speeds);
+        speedGraph.addSeries(oldSpeeds);
+        oldDistances.setColor(Color.RED);
+        oldSpeeds.setColor(Color.RED);
+        distances.setColor(Color.BLUE);
+        distances.setColor(Color.BLUE);
 
         aButton.setOnClickListener(onClickListener);
         bButton.setOnClickListener(onClickListener);
@@ -527,11 +594,22 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 }
             }
             else if(msg.what == FlagVar.DISTANCE_TEXT){
-                int distanceCnt = msg.arg2;
-                int distance = (int) (FlagVar.cSample * distanceCnt);
+                Bundle bundle = msg.getData();
+                int distanceCnt = bundle.getInt("oldDistanceCnt");
+                float oldDistance = FlagVar.cSample * distanceCnt;
+                String oldDistanceStr = decimalFormat.format(oldDistance);
+                String oldSpeedStr = decimalFormat.format(bundle.getFloat("oldSpeed"));
 
-                String speedStr = decimalFormat.format((float)msg.obj);
-                String str = "distanceCnt:"+distanceCnt+"\ndistance:"+distance+"\nspeed:"+speedStr;
+                String speedStr = decimalFormat.format(bundle.getFloat("speed"));
+                String distanceStr = decimalFormat.format(bundle.getFloat("distance"));
+
+                insertToLineGraphSeries(oldDistances,oldDistancePoints,oldDistance);
+                insertToLineGraphSeries(oldSpeeds,oldSpeedPoints,bundle.getFloat("oldSpeed"));
+                insertToLineGraphSeries(distances,distancePoints,bundle.getFloat("distance"));
+                insertToLineGraphSeries(speeds,speedPoints,bundle.getFloat("speed"));
+
+                graphCnt++;
+                String str = "distanceCnt:"+distanceCnt+"\noldDistance:"+oldDistanceStr+"\noldSpeed:"+oldSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){
@@ -551,6 +629,21 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
         }
     };
+
+    private void insertToLineGraphSeries(LineGraphSeries<DataPoint> series,DataPoint[] points,float val){
+        DataPoint dataPoint = new DataPoint(graphCnt,val);
+        if(graphCnt < graphSize){
+            points[graphCnt] = dataPoint;
+            DataPoint[] buffer = new DataPoint[graphCnt+1];
+            System.arraycopy(points,0,buffer,0,graphCnt+1);
+            series.resetData(buffer);
+        }else{
+            System.arraycopy(points,1,points,0,graphSize-1);
+            points[graphSize-1] = dataPoint;
+            series.resetData(points);
+        }
+
+    }
 
 
 
@@ -732,9 +825,118 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
+        /**
+         * add(int groupId, int itemId, int order, CharSequence title)，为菜单添加选项
+         * 1）groupId：菜单组 标识
+         * 2）itemId：菜单项标识，当用户点击菜单的时候，需要根据这个标识来判断，点击的是谁
+         * 3）order：菜单排序，数值越小越排在前
+         * 4）title：菜单名称
+         */
+        SubMenu showModeSubMenu = menu.addSubMenu("显示模式");
+        showModeSubMenu.add(SHOW_SETTING,GRAPH_MODE, 0, "图表模式");
+        showModeSubMenu.add(SHOW_SETTING,STRING_MODE,1,"文字模式");
+        menu.add(METRIC_SETTING,METRIC_MODE,0,"参数设置");
+        return true;
     }
+
+    final private int SHOW_SETTING = 0;
+    final private int GRAPH_MODE = 1;
+    final private int STRING_MODE = 2;
+    final private int METRIC_SETTING = 3;
+    final private int METRIC_MODE = 4;
+
+    private int currentShowMode = STRING_MODE;
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case GRAPH_MODE:
+                currentShowMode = GRAPH_MODE;
+                distanceGraph.setVisibility(View.VISIBLE);
+                speedGraph.setVisibility(View.VISIBLE);
+                textLinear.setVisibility(View.GONE);
+                break;
+            case STRING_MODE:
+                currentShowMode = STRING_MODE;
+                distanceGraph.setVisibility(View.GONE);
+                speedGraph.setVisibility(View.GONE);
+                textLinear.setVisibility(View.VISIBLE);
+                break;
+            case METRIC_MODE:
+                LoginDialog();
+                break;
+
+        }
+        return true;
+    }
+
+
+
+    private DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            switch (which) {
+                case DialogInterface.BUTTON_POSITIVE: {
+                    FlagVar.Q.set(0,0,getNumber(q11EditText.getText().toString()));
+                    FlagVar.Q.set(0,1,getNumber(q12EditText.getText().toString()));
+                    FlagVar.Q.set(1,0,getNumber(q12EditText.getText().toString()));
+                    FlagVar.Q.set(1,1,getNumber(q22EditText.getText().toString()));
+                    FlagVar.R.set(0,0,getNumber(r11EditText.getText().toString()));
+                    FlagVar.R.set(0,1,getNumber(r12EditText.getText().toString()));
+                    FlagVar.R.set(1,0,getNumber(r12EditText.getText().toString()));
+                    FlagVar.R.set(1,1,getNumber(r22EditText.getText().toString()));
+                    break;
+                }
+                case DialogInterface.BUTTON_NEUTRAL: {
+
+                    break;
+                }
+            }
+        }
+
+    };
+
+    private double getNumber(String str){
+        if(str == null || str.length() == 0){
+            return 0;
+        }
+        return Double.parseDouble(str);
+
+    }
+
+    public void LoginDialog () {
+
+
+        LayoutInflater layoutInflater = LayoutInflater.from(this);
+        View longinDialogView = layoutInflater.inflate(R.layout.metric_setting, null);
+
+        q11EditText = longinDialogView.findViewById(R.id.edit_q11);
+        q12EditText = longinDialogView.findViewById(R.id.edit_q12);
+        q22EditText = longinDialogView.findViewById(R.id.edit_q22);
+        r11EditText = longinDialogView.findViewById(R.id.edit_r11);
+        r12EditText = longinDialogView.findViewById(R.id.edit_r12);
+        r22EditText = longinDialogView.findViewById(R.id.edit_r22);
+
+         //创建一个AlertDialog对话框
+        Dialog dialog = new AlertDialog.Builder(this)
+             .setTitle("登录框")
+             .setView(longinDialogView)                //加载自定义的对话框式样
+             .setPositiveButton("确定", dialogOnClickListener)
+             .setNeutralButton("取消", dialogOnClickListener)
+             .create();
+
+        q11EditText.setText(FlagVar.Q.get(0,0)+"");
+        q12EditText.setText(FlagVar.Q.get(0,1)+"");
+        q22EditText.setText(FlagVar.Q.get(1,1)+"");
+        r11EditText.setText(FlagVar.R.get(0,0)+"");
+        r12EditText.setText(FlagVar.R.get(0,1)+"");
+        r22EditText.setText(FlagVar.R.get(1,1)+"");
+
+        dialog.show();
+    }
+
+
 
 
 }

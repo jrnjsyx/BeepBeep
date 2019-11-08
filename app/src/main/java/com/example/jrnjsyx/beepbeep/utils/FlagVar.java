@@ -1,5 +1,7 @@
 package com.example.jrnjsyx.beepbeep.utils;
 
+import org.ejml.data.DMatrixRMaj;
+
 import java.math.BigDecimal;
 
 public class FlagVar {
@@ -13,6 +15,7 @@ public class FlagVar {
     public static int lowFStart = 16000;
     public static int highFStart = 20000;
     public static int chirpInterval = 4000*3;
+    public static int chirpIntervalTime = chirpInterval/Fs;
     public static int playBufferSize = chirpInterval;
     public static int recordBufferSize = chirpInterval;
     public static int[] frequencies = {14500,14600,14700,14800,14900,15000,15100,15200,15300,15400};
@@ -79,4 +82,15 @@ public class FlagVar {
     public static float ratioAvailableThreshold = 0.4f;
 
     public static int PORT = 34567;
+
+
+
+    public static DMatrixRMaj Q = new DMatrixRMaj(2,2);
+    public static DMatrixRMaj R = new DMatrixRMaj(2,2);
+    static {
+        Q.set(0,0,500);
+        Q.set(1,1,500);
+        R.set(0,0,100);
+        R.set(1,1,100);
+    }
 }
