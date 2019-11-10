@@ -30,6 +30,12 @@ public class ADiffThread extends Thread{
     Sequence updateK;
     Sequence updateX;
     Sequence updateP;
+    private int distanceAbnormalCnt = 0;
+    private int speedAbnormalCnt = 0;
+    private float oldDistance;
+    private float oldSpeed;
+    private float unhandledDistance;
+    private float unhandledSpeed;
 
     Equation eq = new Equation();
 
@@ -40,9 +46,7 @@ public class ADiffThread extends Thread{
         this.decodeThread = decodeThread;
         this.handler = handler;
         this.step = step;
-        F.set(0,0,1);
-        F.set(1,1,1);
-        F.set(0,1,FlagVar.chirpIntervalTime);
+
         x.set(0,0,100);
         x.set(1,0,2);
         P.set(0,0,10);
@@ -68,24 +72,41 @@ public class ADiffThread extends Thread{
         try{
             while (isRunning){
                 if(decodeThread.dataOk) {
+
                     decodeThread.dataOk = false;
                     int unprocessedDistanceCnt = decodeThread.highChirpPosition-decodeThread.lowChirpPosition-(decodeThread.remoteHighChirpPosition-decodeThread.remoteLowChirpPosition);
                     int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
                     Common.println("distanceCnt:"+distanceCnt);
-                    distance = FlagVar.cSample * distanceCnt;
-                    speed = decodeThread.speed;
+                    unhandledDistance = FlagVar.cSample * distanceCnt;
+                    unhandledSpeed = decodeThread.speed;
+                    if(Math.abs(oldDistance+FlagVar.chirpIntervalTime*oldSpeed-unhandledDistance) > FlagVar.distanceThreshold && distanceAbnormalCnt < 4){
+                        distanceAbnormalCnt++;
+                    }
+                    else{
+                        distanceAbnormalCnt = 0;
+                        distance = unhandledDistance;
+                    }
+                    if(Math.abs(oldSpeed-unhandledSpeed) > FlagVar.speedThreshold && speedAbnormalCnt < 4){
+                        speedAbnormalCnt++;
+                    }
+                    else{
+                        speedAbnormalCnt = 0;
+                        speed = unhandledSpeed;
+                    }
 
                     if(FlagVar.currentRangingMode != FlagVar.BEEP_BEEP_MODE) {
                         computeUsingKalman();
                     }
 
-
+                    oldDistance = distance;
+                    oldSpeed = speed;
                     Message msg = new Message();
                     Bundle bundle = new Bundle();
-                    bundle.putFloat("oldSpeed",decodeThread.speed);
-                    bundle.putInt("oldDistanceCnt",distanceCnt);
-                    bundle.putFloat("speed",speed);
-                    bundle.putFloat("distance",distance);
+                    bundle.putFloat("unhandledSpeed",unhandledSpeed);
+                    bundle.putFloat("unhandledDistance",unhandledDistance);
+                    bundle.putInt("unhandledDistanceCnt",distanceCnt);
+                    bundle.putFloat("speed",this.speed);
+                    bundle.putFloat("distance",this.distance);
 
                     msg.what = FlagVar.DISTANCE_TEXT;
                     msg.setData(bundle);
@@ -106,6 +127,7 @@ public class ADiffThread extends Thread{
     private void computeUsingKalman(){
         z.set(0,0,distance);
         z.set(1,0,speed);
+        setF(1);
         Q = FlagVar.Q;
         R = FlagVar.R;
         eq.alias(Q,"Q",R,"R");
@@ -117,6 +139,13 @@ public class ADiffThread extends Thread{
         distance = (float) x.get(0,0);
         speed = (float)x.get(1,0);
 
+
+    }
+
+    private void setF(int cnt){
+        F.set(0,0,1);
+        F.set(1,1,1);
+        F.set(0,1,cnt*FlagVar.chirpIntervalTime);
 
     }
 

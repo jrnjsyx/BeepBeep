@@ -61,6 +61,8 @@ public class FlagVar {
     public static int speedEstimateBufferLength = 65536;
     public static int speedEstimateRangeF = 40;
     public static int soundSpeed = 34000;
+    public static int speedThreshold = 200;
+    public static int distanceThreshold = 100;
 
     public static int playThreadDelay = 10;
 
@@ -88,9 +90,11 @@ public class FlagVar {
     public static DMatrixRMaj Q = new DMatrixRMaj(2,2);
     public static DMatrixRMaj R = new DMatrixRMaj(2,2);
     static {
-        Q.set(0,0,500);
-        Q.set(1,1,500);
-        R.set(0,0,100);
-        R.set(1,1,100);
+        Q.set(0,0,10);
+        Q.set(1,1,10);
+        R.set(0,0,20);
+        R.set(0,1,-10);
+        R.set(1,0,-10);
+        R.set(1,1,40);
     }
 }

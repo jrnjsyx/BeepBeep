@@ -595,16 +595,16 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             }
             else if(msg.what == FlagVar.DISTANCE_TEXT){
                 Bundle bundle = msg.getData();
-                int distanceCnt = bundle.getInt("oldDistanceCnt");
+                int distanceCnt = bundle.getInt("unhandledDistanceCnt");
                 float oldDistance = FlagVar.cSample * distanceCnt;
                 String oldDistanceStr = decimalFormat.format(oldDistance);
-                String oldSpeedStr = decimalFormat.format(bundle.getFloat("oldSpeed"));
+                String oldSpeedStr = decimalFormat.format(bundle.getFloat("unhandledSpeed"));
 
                 String speedStr = decimalFormat.format(bundle.getFloat("speed"));
                 String distanceStr = decimalFormat.format(bundle.getFloat("distance"));
 
                 insertToLineGraphSeries(oldDistances,oldDistancePoints,oldDistance);
-                insertToLineGraphSeries(oldSpeeds,oldSpeedPoints,bundle.getFloat("oldSpeed"));
+                insertToLineGraphSeries(oldSpeeds,oldSpeedPoints,bundle.getFloat("unhandledSpeed"));
                 insertToLineGraphSeries(distances,distancePoints,bundle.getFloat("distance"));
                 insertToLineGraphSeries(speeds,speedPoints,bundle.getFloat("speed"));
 

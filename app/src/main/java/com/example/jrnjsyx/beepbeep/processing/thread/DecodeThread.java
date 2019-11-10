@@ -56,6 +56,7 @@ public class DecodeThread extends Decoder implements Runnable {
     public SpeedInfo speedInfo;
     public float speed;
     private short[] speedBuffer = new short[FlagVar.lSine];
+    public boolean isAbnormal;
 
 
 
@@ -322,7 +323,7 @@ public class DecodeThread extends Decoder implements Runnable {
             int highDiff = infoHighUp.index-infoHighDown.index;
             highDiff = highDiff-FlagVar.lChirp;
             highDiff = Algorithm.moveIntoRange(highDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval);
-            speed = (float) FlagVar.bChirp*highDiff*FlagVar.soundSpeed/(FlagVar.lowFStart+FlagVar.bChirp/2)/FlagVar.lChirp/2;
+            speed = (float) FlagVar.bChirp2*highDiff*FlagVar.soundSpeed/(FlagVar.highFStart-FlagVar.bChirp2/2)/FlagVar.lChirp/2;
             String speedStr = FlagVar.speedStr+" "+speed;
             currentP2pThread.setMessage(speedStr);
 
@@ -458,7 +459,7 @@ public class DecodeThread extends Decoder implements Runnable {
                 +Math.abs(savednormalPos[1]-highPos)
                 +Math.abs(savednormalPos[2]-remoteLowPos)
                 +Math.abs(savednormalPos[3]-remoteHighPos);
-        boolean isAbnormal = !(savednormalPos[0] == 0 && savednormalPos[1] == 0 && savednormalPos[2] == 0 && savednormalPos[3] == 0) && previousDiffSum > FlagVar.diffThreshold && abnormalCnt < 3;
+        isAbnormal = !(savednormalPos[0] == 0 && savednormalPos[1] == 0 && savednormalPos[2] == 0 && savednormalPos[3] == 0) && previousDiffSum > FlagVar.diffThreshold && abnormalCnt < 3;
         if(isAbnormal){
 //            clearPositions(lowChirpPositions);
 //            clearPositions(highChirpPositions);
