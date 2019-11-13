@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 
+import com.example.jrnjsyx.beepbeep.activity.MainActivity;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
@@ -36,6 +37,9 @@ public class ADiffThread extends Thread{
     private float oldSpeed;
     private float unhandledDistance;
     private float unhandledSpeed;
+    private DMatrixRMaj Q0 = new DMatrixRMaj(2,2);
+    private DMatrixRMaj R0 = new DMatrixRMaj(2,2);
+
 
     Equation eq = new Equation();
 
@@ -47,10 +51,17 @@ public class ADiffThread extends Thread{
         this.handler = handler;
         this.step = step;
 
+        Q0.set(0,0,10);
+        Q0.set(1,1,10);
+        R0.set(0,0,20);
+        R0.set(0,1,-10);
+        R0.set(1,0,-10);
+        R0.set(1,1,40);
+
         x.set(0,0,100);
         x.set(1,0,2);
-        P.set(0,0,10);
-        P.set(1,1,10);
+        P.set(0,0,100);
+        P.set(1,1,100);
         Q = FlagVar.Q;
         R = FlagVar.R;
 
@@ -60,6 +71,8 @@ public class ADiffThread extends Thread{
         updateK = eq.compile("K = P*inv( P + R )");
         updateX = eq.compile("x = x + K*(z-x)");
         updateP = eq.compile("P = P-K*P");
+
+
 
 
 
@@ -128,9 +141,19 @@ public class ADiffThread extends Thread{
         z.set(0,0,distance);
         z.set(1,0,speed);
         setF(1);
-        Q = FlagVar.Q;
-        R = FlagVar.R;
-        eq.alias(Q,"Q",R,"R");
+        if(FlagVar.currentSelfAdaptionMode == FlagVar.FREE_MODE) {
+            Q = FlagVar.Q;
+            R = FlagVar.R;
+        }
+        else if(FlagVar.currentSelfAdaptionMode == FlagVar.SELF_ADAPTION_MODE){
+            Q = Q0;
+            double ratio = 0;
+            R.set(0,0,R0.get(0,0)*ratio);
+            R.set(0,1,R0.get(0,1)*ratio);
+            R.set(1,0,R0.get(1,0)*ratio);
+            R.set(1,1,R0.get(1,1)*ratio);
+
+        }
         predictX.perform();
         predictP.perform();
         updateK.perform();

@@ -54,18 +54,13 @@ import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
 import org.ejml.data.DMatrixRMaj;
-import org.ejml.data.FMatrixRMaj;
-import org.ejml.data.MatrixType;
 import org.ejml.equation.Equation;
 import org.ejml.equation.Sequence;
-import org.ejml.simple.SimpleMatrix;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -139,13 +134,13 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     private boolean isAppReady = false;
     private boolean started = false;
 
-    private LineGraphSeries<DataPoint> oldDistances = new LineGraphSeries<>();
-    private LineGraphSeries<DataPoint> oldSpeeds = new LineGraphSeries<>();
-    private LineGraphSeries<DataPoint> distances = new LineGraphSeries<>();
-    private LineGraphSeries<DataPoint> speeds = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> unhandledDistanceSeries = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> unhandledSpeedSeries = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> distanceSeries = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> speedSeries = new LineGraphSeries<>();
     private int graphSize = 50;
-    private DataPoint[] oldDistancePoints = new DataPoint[graphSize];
-    private DataPoint[] oldSpeedPoints = new DataPoint[graphSize];
+    private DataPoint[] unhandledDistancePoints = new DataPoint[graphSize];
+    private DataPoint[] unhandledSpeedPoints = new DataPoint[graphSize];
     private DataPoint[] distancePoints = new DataPoint[graphSize];
     private DataPoint[] speedPoints = new DataPoint[graphSize];
 
@@ -235,14 +230,15 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     public void initParams(){
         distanceGraph = (GraphView)findViewById(R.id.distanceGraph);
         speedGraph = (GraphView)findViewById(R.id.speedGraph);
-        distanceGraph.addSeries(distances);
-        distanceGraph.addSeries(oldDistances);
-        speedGraph.addSeries(speeds);
-        speedGraph.addSeries(oldSpeeds);
-        oldDistances.setColor(Color.RED);
-        oldSpeeds.setColor(Color.RED);
-        distances.setColor(Color.BLUE);
-        distances.setColor(Color.BLUE);
+        distanceGraph.addSeries(distanceSeries);
+        distanceGraph.addSeries(unhandledDistanceSeries);
+        speedGraph.addSeries(speedSeries);
+        speedGraph.addSeries(unhandledSpeedSeries);
+        unhandledDistanceSeries.setColor(Color.RED);
+        unhandledSpeedSeries.setColor(Color.RED);
+        distanceSeries.setColor(Color.BLUE);
+        distanceSeries.setColor(Color.BLUE);
+
 
         aButton.setOnClickListener(onClickListener);
         bButton.setOnClickListener(onClickListener);
@@ -596,20 +592,28 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             else if(msg.what == FlagVar.DISTANCE_TEXT){
                 Bundle bundle = msg.getData();
                 int distanceCnt = bundle.getInt("unhandledDistanceCnt");
-                float oldDistance = FlagVar.cSample * distanceCnt;
-                String oldDistanceStr = decimalFormat.format(oldDistance);
-                String oldSpeedStr = decimalFormat.format(bundle.getFloat("unhandledSpeed"));
+                float unhandledDistance = FlagVar.cSample * distanceCnt;
+                String unhandledDistanceStr = decimalFormat.format(unhandledDistance);
+                String unhandledSpeedStr = decimalFormat.format(bundle.getFloat("unhandledSpeed"));
 
                 String speedStr = decimalFormat.format(bundle.getFloat("speed"));
                 String distanceStr = decimalFormat.format(bundle.getFloat("distance"));
 
-                insertToLineGraphSeries(oldDistances,oldDistancePoints,oldDistance);
-                insertToLineGraphSeries(oldSpeeds,oldSpeedPoints,bundle.getFloat("unhandledSpeed"));
-                insertToLineGraphSeries(distances,distancePoints,bundle.getFloat("distance"));
-                insertToLineGraphSeries(speeds,speedPoints,bundle.getFloat("speed"));
+                insertToLineGraphSeries(unhandledDistanceSeries, unhandledDistancePoints,unhandledDistance);
+                insertToLineGraphSeries(unhandledSpeedSeries, unhandledSpeedPoints,bundle.getFloat("unhandledSpeed"));
+                insertToLineGraphSeries(distanceSeries,distancePoints,bundle.getFloat("distance"));
+                insertToLineGraphSeries(speedSeries,speedPoints,bundle.getFloat("speed"));
+                if(graphCnt > graphSize){
+                    distanceGraph.getViewport().setXAxisBoundsManual(true);
+                    speedGraph.getViewport().setXAxisBoundsManual(true);
+                    distanceGraph.getViewport().setMinX(graphCnt-graphSize);
+                    distanceGraph.getViewport().setMaxX(graphCnt);
+                    speedGraph.getViewport().setMinX(graphCnt-graphSize);
+                    speedGraph.getViewport().setMaxX(graphCnt);
+                }
 
                 graphCnt++;
-                String str = "distanceCnt:"+distanceCnt+"\noldDistance:"+oldDistanceStr+"\noldSpeed:"+oldSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
+                String str = "distanceCnt:"+distanceCnt+"\nunhandledDistance:"+unhandledDistanceStr+"\nunhandledSpeed:"+unhandledSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){
@@ -833,43 +837,79 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
          * 3）order：菜单排序，数值越小越排在前
          * 4）title：菜单名称
          */
-        SubMenu showModeSubMenu = menu.addSubMenu("显示模式");
-        showModeSubMenu.add(SHOW_SETTING,GRAPH_MODE, 0, "图表模式");
-        showModeSubMenu.add(SHOW_SETTING,STRING_MODE,1,"文字模式");
-        menu.add(METRIC_SETTING,METRIC_MODE,0,"参数设置");
+        SubMenu showSettingSubMenu = menu.addSubMenu("显示模式");
+        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.GRAPH_MODE, 0, "图表模式");
+        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.STRING_MODE,1,"文字模式");
+        menu.add(FlagVar.METRIC_SETTING,FlagVar.METRIC_MODE,0,"参数设置");
+        SubMenu seriesSettingSubMenu = menu.addSubMenu("隐藏/显示数据");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.UNHANDLED_SERIES_MODE,0,"显示原始数据");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.HANDLED_SERIES_MODE,1,"显示新数据");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.ALL_SERIES_MODE,2,"显示全部数据");
+        SubMenu selfAdaptionSettingMenu = menu.addSubMenu("自适应模式");
+        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"自适应模式");
+        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"手动模式");
         return true;
     }
 
-    final private int SHOW_SETTING = 0;
-    final private int GRAPH_MODE = 1;
-    final private int STRING_MODE = 2;
-    final private int METRIC_SETTING = 3;
-    final private int METRIC_MODE = 4;
 
-    private int currentShowMode = STRING_MODE;
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
-            case GRAPH_MODE:
-                currentShowMode = GRAPH_MODE;
+            case FlagVar.GRAPH_MODE:
+                FlagVar.currentShowMode = FlagVar.GRAPH_MODE;
                 distanceGraph.setVisibility(View.VISIBLE);
                 speedGraph.setVisibility(View.VISIBLE);
                 textLinear.setVisibility(View.GONE);
                 break;
-            case STRING_MODE:
-                currentShowMode = STRING_MODE;
+            case FlagVar.STRING_MODE:
+                FlagVar.currentShowMode = FlagVar.STRING_MODE;
                 distanceGraph.setVisibility(View.GONE);
                 speedGraph.setVisibility(View.GONE);
                 textLinear.setVisibility(View.VISIBLE);
                 break;
-            case METRIC_MODE:
-                LoginDialog();
+            case FlagVar.METRIC_MODE:
+                if(FlagVar.currentSelfAdaptionMode == FlagVar.FREE_MODE) {
+                    LoginDialog();
+                }
+                else{
+                    showToast("请取消自适应模式");
+                }
+                break;
+            case FlagVar.UNHANDLED_SERIES_MODE:
+                FlagVar.currentShowMode = FlagVar.UNHANDLED_SERIES_MODE;
+                distanceGraph.removeAllSeries();
+                distanceGraph.addSeries(unhandledDistanceSeries);
+                speedGraph.removeAllSeries();
+                speedGraph.addSeries(unhandledSpeedSeries);
+                break;
+            case FlagVar.HANDLED_SERIES_MODE:
+                FlagVar.currentShowMode = FlagVar.HANDLED_SERIES_MODE;
+                distanceGraph.removeAllSeries();
+                distanceGraph.addSeries(distanceSeries);
+                speedGraph.removeAllSeries();
+                speedGraph.addSeries(speedSeries);
+                break;
+            case FlagVar.ALL_SERIES_MODE:
+                FlagVar.currentShowMode = FlagVar.HANDLED_SERIES_MODE;
+                distanceGraph.removeAllSeries();
+                distanceGraph.addSeries(distanceSeries);
+                distanceGraph.addSeries(unhandledDistanceSeries);
+                speedGraph.removeAllSeries();
+                speedGraph.addSeries(speedSeries);
+                speedGraph.addSeries(unhandledSpeedSeries);
+                break;
+            case FlagVar.SELF_ADAPTION_MODE:
+                FlagVar.currentSelfAdaptionMode = FlagVar.SELF_ADAPTION_MODE;
+                break;
+            case FlagVar.FREE_MODE:
+                FlagVar.currentSelfAdaptionMode = FlagVar.FREE_MODE;
                 break;
 
         }
         return true;
     }
+
 
 
 
@@ -918,7 +958,6 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         r12EditText = longinDialogView.findViewById(R.id.edit_r12);
         r22EditText = longinDialogView.findViewById(R.id.edit_r22);
 
-         //创建一个AlertDialog对话框
         Dialog dialog = new AlertDialog.Builder(this)
              .setTitle("登录框")
              .setView(longinDialogView)                //加载自定义的对话框式样

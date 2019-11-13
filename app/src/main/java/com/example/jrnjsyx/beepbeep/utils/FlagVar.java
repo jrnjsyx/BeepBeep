@@ -55,6 +55,7 @@ public class FlagVar {
     public static int adjustThreshold = 4;
     public static int diffThreshold = 1000;
     public static int BEEP_BEEP_MODE = 0;
+    //废弃
     public static int MY_ORIGINAL_MODE = 1;
     public static int MY_NEW_MODE = 2;
     public static int currentRangingMode = MY_NEW_MODE;
@@ -97,4 +98,22 @@ public class FlagVar {
         R.set(1,0,-10);
         R.set(1,1,40);
     }
+
+    final static public int SHOW_SETTING = 0;
+    final static public int GRAPH_MODE = 1;
+    final static public int STRING_MODE = 2;
+    final static public int METRIC_SETTING = 3;
+    final static public int METRIC_MODE = 4;
+    final static public int SERIES_SETTING = 5;
+    final static public int UNHANDLED_SERIES_MODE = 6;
+    final static public int HANDLED_SERIES_MODE = 7;
+    final static public int ALL_SERIES_MODE = 8;
+    final static public int SELF_ADAPTION_SETTING = 9;
+    final static public int SELF_ADAPTION_MODE = 10;
+    final static public int FREE_MODE = 11;
+
+    static public int currentSeriesMode = ALL_SERIES_MODE;
+    static public int currentSelfAdaptionMode = FREE_MODE;
+
+    static public int currentShowMode = STRING_MODE;
 }
