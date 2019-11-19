@@ -11,9 +11,10 @@ public class FlagVar {
     public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
-    public static int bChirp2 = 1500;
+
     public static int lowFStart = 16000;
-    public static int highFStart = 20000;
+    public static int highFStart = 20500;
+    public static int bChirp2 = highFStart*bChirp/(bChirp+lowFStart);
     public static int chirpInterval = 4000*3;
     public static int chirpIntervalTime = chirpInterval/Fs;
     public static int playBufferSize = chirpInterval;
