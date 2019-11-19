@@ -213,54 +213,12 @@ public class DecodeThread extends Decoder implements Runnable {
         highChirpPosition = processBufferSize * mLoopCounter + highIndex;
     }
 
-    private void backup(){
-        float fft2[] = JniUtils.fft(normalization(buffer), chirpCorrLen);
-        IndexMaxVarInfo infoHigh2 = getIndexMaxVarInfoFromFDomain2(fft2, highDownChirpFFT);
-        boolean isIndexFromPreviousOk = (distance(infoHigh.index,previousHighIndexes[0]) < FlagVar.previousIndexThreshold);
-        boolean isIndex2FromPreviousOk = (distance(infoHigh2.index,previousHighIndexes[1]) < FlagVar.previousIndexThreshold);
-        if(previousHighIndexes[0] != 0){
-            if(distance(lowIndex,infoHigh.index) < FlagVar.lChirp){
-                if(distance(infoHigh.index,infoHigh2.index) < FlagVar.twiceIndexThreshold){
-                    highIndex = infoHigh.index;
-                }
-                else{
-                    if(isIndexFromPreviousOk && !isIndex2FromPreviousOk){
-                        highIndex = infoHigh.index;
-                    }
-                    else if(isIndex2FromPreviousOk && !isIndexFromPreviousOk){
-                        highIndex = infoHigh2.index;
-                    }
-                    else if(isIndexFromPreviousOk && isIndex2FromPreviousOk){
-                        highIndex = infoHigh2.index;
-                    }
-                    else{
-                        highIndex = infoHigh.index;
-                    }
-
-                }
-            }
-            else{
-                if(isIndexFromPreviousOk && !isIndex2FromPreviousOk){
-                    highIndex = infoHigh.index;
-                }
-                else if(isIndex2FromPreviousOk && !isIndexFromPreviousOk){
-                    highIndex = infoHigh2.index;
-                }
-                else if(isIndexFromPreviousOk && isIndex2FromPreviousOk){
-                    highIndex = infoHigh2.index;
-                }
-                else{
-                    highIndex = infoHigh.index;
-                }
-            }
-        }
-    }
 
     int distance(int i1,int i2){
         return Math.abs(Algorithm.moveIntoRange(i1-i2,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval));
     }
 
-
+    //speed estimation by adding sine wave and analyzing its frequency domain.
     private void runOnMyOriginalPerTurn(){
         if (samplesList.size() >= 2) {
             if(skip()){
@@ -296,7 +254,7 @@ public class DecodeThread extends Decoder implements Runnable {
         }
     }
 
-    private void analysisData2(){
+    private void analysisDataForMyNew(){
         float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
         infoLow = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT);
         infoHigh = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT);
@@ -368,7 +326,7 @@ public class DecodeThread extends Decoder implements Runnable {
         lowChirpPosition = processBufferSize * mLoopCounter + lowIndex;
         highChirpPosition = processBufferSize * mLoopCounter + highIndex;
     }
-
+    //speed estimation by computing dopller effects of chirp signal.
     private void runOnMyNewPerTurn(){
         if (samplesList.size() >= 2) {
             if(skip()){
@@ -379,7 +337,7 @@ public class DecodeThread extends Decoder implements Runnable {
             synchronized (mLoopCounter) {
                 mLoopCounter++;
             }
-            analysisData2();
+            analysisDataForMyNew();
             saveAndSendLowPos(lowIndex);
             saveAndSendHighPos(highIndex);
 
@@ -478,10 +436,10 @@ public class DecodeThread extends Decoder implements Runnable {
         remoteDiff = remoteHighPos-remoteLowPos;
         diff = Algorithm.moveIntoRange(diff,0-FlagVar.recordBufferSize/2,FlagVar.recordBufferSize);
         remoteDiff = Algorithm.moveIntoRange(remoteDiff,0-FlagVar.recordBufferSize/2,FlagVar.recordBufferSize);
-        Common.println("savednormalPos:"+savednormalPos[0]+" "+savednormalPos[1]+" "+savednormalPos[2]+" "+savednormalPos[3]);
-        Common.println("Pos:"+lowPos+" "+highPos+" "+remoteLowPos+" "+remoteHighPos);
+//        Common.println("savednormalPos:"+savednormalPos[0]+" "+savednormalPos[1]+" "+savednormalPos[2]+" "+savednormalPos[3]);
+//        Common.println("Pos:"+lowPos+" "+highPos+" "+remoteLowPos+" "+remoteHighPos);
 //        Common.println("low size:"+lowChirpPositions.size()+"   remote high size:"+remoteHighChirpPositions.size());
-        Common.println("diff:"+diff +" remoteDiff:"+remoteDiff+"  isAbnormal:"+isAbnormal+"   previousDiffSum:"+previousDiffSum);
+//        Common.println("diff:"+diff +" remoteDiff:"+remoteDiff+"  isAbnormal:"+isAbnormal+"   previousDiffSum:"+previousDiffSum);
         if(!isLow){
             return false;
         }

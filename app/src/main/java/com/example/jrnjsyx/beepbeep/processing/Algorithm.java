@@ -177,4 +177,29 @@ public class Algorithm {
         return res;
 
     }
+
+    //(y-y0)*(x-x0)=a  return [x0,y0,a]
+    public static double[] threePointDeterminationCurve(double[] xs,double[] ys){
+        if(xs.length != 3 || ys.length != 3){
+            throw new RuntimeException("输入的并非三点的数据。");
+        }
+        if((xs[1]-xs[0])*(xs[2]-xs[1]) <= 0 || (ys[1]-ys[0])*(ys[2]-ys[1]) <= 0){
+            throw new RuntimeException("输入的数据必须单增或者单减。");
+        }
+        double a11 = ys[1]-ys[0];
+        double a12 = xs[1]-xs[0];
+        double a21 = ys[2]-ys[0];
+        double a22 = xs[2]-xs[0];
+        double b1 = xs[1]*ys[1]-xs[0]*ys[0];
+        double b2 = xs[2]*ys[2]-xs[0]*ys[0];
+        double x0 = (b1*a22-b2*a12)/(a11*a22-a21*a12);
+        double y0 = (a11*b2-a21*b1)/(a11*a22-a21*a12);
+        double a = (xs[1]-x0)*(ys[1]-y0);
+        double[] ret = new double[3];
+        ret[0] = x0;
+        ret[1] = y0;
+        ret[2] = a;
+        return ret;
+
+    }
 }

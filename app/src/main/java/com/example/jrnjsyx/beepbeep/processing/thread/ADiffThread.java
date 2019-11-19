@@ -39,6 +39,7 @@ public class ADiffThread extends Thread{
     private float unhandledSpeed;
     private DMatrixRMaj Q0 = new DMatrixRMaj(2,2);
     private DMatrixRMaj R0 = new DMatrixRMaj(2,2);
+    double[] curveMetric = Algorithm.threePointDeterminationCurve(new double[]{60,20,0},new double[]{1,2,10});
 
 
     Equation eq = new Equation();
@@ -62,8 +63,8 @@ public class ADiffThread extends Thread{
         x.set(1,0,2);
         P.set(0,0,100);
         P.set(1,1,100);
-        Q = FlagVar.Q;
-        R = FlagVar.R;
+        Q = new DMatrixRMaj(FlagVar.Q);
+        R = new DMatrixRMaj(FlagVar.R);
 
         eq.alias(x,"x",F,"F",z,"z",P,"P",Q,"Q",R,"R",K,"K");
         predictX = eq.compile("x = F*x");
@@ -142,18 +143,26 @@ public class ADiffThread extends Thread{
         z.set(1,0,speed);
         setF(1);
         if(FlagVar.currentSelfAdaptionMode == FlagVar.FREE_MODE) {
-            Q = FlagVar.Q;
-            R = FlagVar.R;
+            Q = new DMatrixRMaj(FlagVar.Q);
+            R = new DMatrixRMaj(FlagVar.R);
+            System.out.println(Q);
+            System.out.println(R);
         }
         else if(FlagVar.currentSelfAdaptionMode == FlagVar.SELF_ADAPTION_MODE){
-            Q = Q0;
-            double ratio = 0;
-            R.set(0,0,R0.get(0,0)*ratio);
-            R.set(0,1,R0.get(0,1)*ratio);
-            R.set(1,0,R0.get(1,0)*ratio);
-            R.set(1,1,R0.get(1,1)*ratio);
+            Q = new DMatrixRMaj(Q0);
+            double ratio = curveMetric[2]/(Math.abs(oldSpeed)-curveMetric[0])+curveMetric[1];
+            if(ratio < 0.5){
+                ratio = 0.5;
+            }
+            double r11 = R0.get(0,0)*ratio;
+            double r12 = 0-Math.sqrt(r11*R0.get(1,1)/8);
+            R.set(0,0,r11);
+            R.set(0,1,r12);
+            R.set(1,0,r12);
+            R.set(1,1,R0.get(1,1));
 
         }
+        eq.alias(Q,"Q",R,"R");
         predictX.perform();
         predictP.perform();
         updateK.perform();

@@ -55,7 +55,7 @@ public class FlagVar {
     public static int adjustThreshold = 4;
     public static int diffThreshold = 1000;
     public static int BEEP_BEEP_MODE = 0;
-    //废弃
+    //abandoned
     public static int MY_ORIGINAL_MODE = 1;
     public static int MY_NEW_MODE = 2;
     public static int currentRangingMode = MY_NEW_MODE;

@@ -183,6 +183,16 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             predictX.perform();
             System.out.println(x);
 
+            double[] ret = Algorithm.threePointDeterminationCurve(new double[]{100,20,0},new double[]{1,2,5});
+            System.out.println(Arrays.toString(ret));
+            double x0 = ret[0];
+            double y0 = ret[1];
+            double a = ret[2];
+            double a1 = (100-x0)*(1-y0);
+            double a2 = (20-x0)*(2-y0);
+            double a3 = (0-x0)*(5-y0);
+            System.out.println("a:"+a1+" "+a2+" "+a3);
+
 
         }
     }
