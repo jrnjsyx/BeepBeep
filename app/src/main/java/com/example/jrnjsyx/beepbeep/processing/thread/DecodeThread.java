@@ -1,5 +1,6 @@
 package com.example.jrnjsyx.beepbeep.processing.thread;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 
@@ -7,6 +8,7 @@ import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
 import com.example.jrnjsyx.beepbeep.processing.IndexMaxVarInfo;
+import com.example.jrnjsyx.beepbeep.processing.KalmanFilter;
 import com.example.jrnjsyx.beepbeep.processing.SpeedInfo;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
@@ -30,8 +32,6 @@ public class DecodeThread extends Decoder implements Runnable {
     public List<Integer> remoteLowChirpPositions;
     public List<Integer> remoteHighChirpPositions;
     private WifiP2pThread currentP2pThread;
-    public Integer basePos = 0;
-    public Integer remoteBasePos = 0;
     public int lowChirpPosition;
     public int highChirpPosition;
     public int remoteLowChirpPosition;
@@ -43,7 +43,6 @@ public class DecodeThread extends Decoder implements Runnable {
     private int diff = 0;
     private int remoteDiff = 0;
     public Boolean skip = false;
-    public boolean dataOk = false;
     private int[] savednormalPos = {0,0,0,0};
     private int abnormalCnt = 0;
     private int adjustCnt = FlagVar.adjustThreshold;
@@ -57,7 +56,9 @@ public class DecodeThread extends Decoder implements Runnable {
     public float speed;
     private short[] speedBuffer = new short[FlagVar.lSine];
     public boolean isAbnormal;
-
+    KalmanFilter kalmanFilter;
+    public Bundle mainData = new Bundle();
+    private boolean firstAdjust = true;
 
 
     public short[] savedData = new short[dataSavedSize];
@@ -67,6 +68,7 @@ public class DecodeThread extends Decoder implements Runnable {
     private IndexMaxVarInfo mIndexMaxVarInfo;
 
     public DecodeThread(Handler mHandler, WifiP2pThread currentP2pThread,PlayThread playThread,boolean isLow){
+        kalmanFilter = new KalmanFilter(this);
         mIndexMaxVarInfo = new IndexMaxVarInfo();
         samplesList = new LinkedList<short[]>();
         lowChirpPositions = new LinkedList<Integer>();
@@ -249,7 +251,6 @@ public class DecodeThread extends Decoder implements Runnable {
                 currentP2pThread.setMessage(msg);
             }
             sendDebugMsg();
-            dataOk = true;
 
         }
     }
@@ -282,8 +283,6 @@ public class DecodeThread extends Decoder implements Runnable {
             highDiff = highDiff-FlagVar.lChirp;
             highDiff = Algorithm.moveIntoRange(highDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval);
             speed = (float) FlagVar.bChirp2*highDiff*FlagVar.soundSpeed/(FlagVar.highFStart-FlagVar.bChirp2/2)/FlagVar.lChirp/2;
-            String speedStr = FlagVar.speedStr+" "+speed;
-            currentP2pThread.setMessage(speedStr);
 
             highIndex = infoHighDown.index;
 //            previousHighIndexes[0] = infoHigh.index;
@@ -348,11 +347,36 @@ public class DecodeThread extends Decoder implements Runnable {
                 String msg = FlagVar.skipStr+" "+"true";
                 currentP2pThread.setMessage(msg);
             }
+            if(isLow) {
+                kalmanFilter.computeOnce();
+                sendMainMsgForLow();
+
+            }
+            sendMainMsg();
             sendDebugMsg();
-            dataOk = true;
 
         }
     }
+
+    private void sendMainMsgForLow(){
+        currentP2pThread.setMessage(FlagVar.unhandledDistanceStr+" "+kalmanFilter.unhandledDistance);
+        currentP2pThread.setMessage(FlagVar.unhandledSpeedStr+" "+kalmanFilter.unhandledSpeed);
+        currentP2pThread.setMessage(FlagVar.unhandledDistanceCntStr+" "+kalmanFilter.distanceCnt);
+        currentP2pThread.setMessage(FlagVar.speedStr+" "+kalmanFilter.speed);
+        currentP2pThread.setMessage(FlagVar.distanceStr+" "+kalmanFilter.distance);
+        mainData.putFloat(FlagVar.unhandledSpeedStr,kalmanFilter.unhandledSpeed);
+        mainData.putFloat(FlagVar.unhandledDistanceStr,kalmanFilter.unhandledDistance);
+        mainData.putInt(FlagVar.unhandledDistanceCntStr,kalmanFilter.distanceCnt);
+        mainData.putFloat(FlagVar.speedStr,kalmanFilter.speed);
+        mainData.putFloat(FlagVar.distanceStr,kalmanFilter.distance);
+    }
+    private void sendMainMsg(){
+        Message msg = new Message();
+        msg.what = FlagVar.MAIN_TEXT;
+        msg.setData(mainData);
+        mHandler.sendMessage(msg);
+    }
+
     private void runOnBeepbeepPerTurn(){
         if (samplesList.size() >= 2) {
             if(skip()){
@@ -376,7 +400,6 @@ public class DecodeThread extends Decoder implements Runnable {
                 currentP2pThread.setMessage(msg);
             }
             sendDebugMsg();
-            dataOk = true;
 
         }
     }
@@ -419,10 +442,6 @@ public class DecodeThread extends Decoder implements Runnable {
                 +Math.abs(savednormalPos[3]-remoteHighPos);
         isAbnormal = !(savednormalPos[0] == 0 && savednormalPos[1] == 0 && savednormalPos[2] == 0 && savednormalPos[3] == 0) && previousDiffSum > FlagVar.diffThreshold && abnormalCnt < 3;
         if(isAbnormal){
-//            clearPositions(lowChirpPositions);
-//            clearPositions(highChirpPositions);
-//            clearPositions(remoteHighChirpPositions);
-//            clearPositions(remoteLowChirpPositions);
             abnormalCnt++;
         }else {
             abnormalCnt = 0;
@@ -466,25 +485,29 @@ public class DecodeThread extends Decoder implements Runnable {
                 diffDiff -= FlagVar.lChirp;
                 needAdjust = (diff > 0-FlagVar.lChirp*2 && diff <= FlagVar.lChirp) || (remoteDiff > 0-2*FlagVar.lChirp && remoteDiff <= FlagVar.lChirp);
             }
+            needAdjust = (needAdjust && !isAbnormal && adjustCnt == 0) || firstAdjust;
+            if(firstAdjust){
+                firstAdjust = false;
+            }
             //应该是减还是加？
             offset = (FlagVar.recordBufferSize+diffDiff)/2;
             Common.println("diff:"+diff +" remoteDiff:"+remoteDiff+" offset:"+offset+"  needAdjust:"+needAdjust+"  isAbnormal:"+isAbnormal);
 
             if(needAdjust){
-                if(!isAbnormal && adjustCnt == 0) {
-                    clearPositions(lowChirpPositions);
-                    clearPositions(highChirpPositions);
-                    clearPositions(remoteHighChirpPositions);
-                    clearPositions(remoteLowChirpPositions);
-                    savednormalPos[0] = 0;
-                    savednormalPos[1] = 0;
-                    savednormalPos[2] = 0;
-                    savednormalPos[3] = 0;
-                    playThread.adjustSample(offset);
-                    adjustCnt = FlagVar.adjustThreshold;
-                    Common.println("adjust.");
-                    return true;
-                }
+//                if(!isAbnormal && adjustCnt == 0) {
+                clearPositions(lowChirpPositions);
+                clearPositions(highChirpPositions);
+                clearPositions(remoteHighChirpPositions);
+                clearPositions(remoteLowChirpPositions);
+                savednormalPos[0] = 0;
+                savednormalPos[1] = 0;
+                savednormalPos[2] = 0;
+                savednormalPos[3] = 0;
+                playThread.adjustSample(offset);
+                adjustCnt = FlagVar.adjustThreshold;
+                Common.println("adjust.");
+                return true;
+//                }
             }
 
         }
@@ -576,18 +599,26 @@ public class DecodeThread extends Decoder implements Runnable {
                         remoteHighChirpPosition = Integer.parseInt(strs[1]);
                     }
                 }
-//                else if(strs[0].equals(FlagVar.basePosStr)){
-//                    synchronized (remoteBasePos){
-//                        remoteBasePos = Integer.parseInt(strs[1]);
-//                    }
-//                }
                 else if(strs[0].equals(FlagVar.skipStr)){
                     synchronized (skip){
                         skip = Boolean.parseBoolean(strs[1]);
                     }
                 }
                 else if(strs[0].equals(FlagVar.speedStr)){
-                    speed = Float.parseFloat(strs[1]);
+                    mainData.putFloat(FlagVar.speedStr,Float.parseFloat(strs[1]));
+                }
+                else if(strs[0].equals(FlagVar.distanceStr)){
+                    mainData.putFloat(FlagVar.distanceStr,Float.parseFloat(strs[1]));
+                }
+                else if(strs[0].equals(FlagVar.unhandledDistanceCntStr)){
+                    mainData.putInt(FlagVar.unhandledDistanceCntStr,Integer.parseInt(strs[1]));
+                }
+                else if(strs[0].equals(FlagVar.unhandledDistanceStr)){
+                    mainData.putFloat(FlagVar.unhandledDistanceStr,Float.parseFloat(strs[1]));
+                }
+                else if(strs[0].equals(FlagVar.unhandledSpeedStr)){
+                    mainData.putFloat(FlagVar.unhandledSpeedStr,Float.parseFloat(strs[1]));
+
                 }
             }
         }

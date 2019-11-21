@@ -37,8 +37,6 @@ import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
 import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
-import com.example.jrnjsyx.beepbeep.processing.thread.ADiffThread;
-import com.example.jrnjsyx.beepbeep.processing.thread.BDiffThread;
 import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
@@ -118,8 +116,6 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     private WifiP2pThread clientThread;
     private WifiP2pThread currentP2pThread;
     private ConnetJudgeThread connetJudgeThread;
-    private ADiffThread aDiffThread;
-    private BDiffThread bDiffThread;
 
     private WifiP2pInfo wifiP2pInfo;
     private boolean aMode = false;
@@ -339,7 +335,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     }
 
     private void aModeStart(){
-
+        Common.println("aModeStart.");
         currentP2pThread.setMessage(FlagVar.aModeStr);
         showToast("开始测距。");
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
@@ -362,8 +358,6 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
-        aDiffThread = new ADiffThread(decodeThread,myHandler,FlagVar.playBufferSize);
-        aDiffThread.start();
         started = true;
     }
     private void bModeStart(){
@@ -388,23 +382,17 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
-        bDiffThread = new BDiffThread(decodeThread,myHandler,FlagVar.playBufferSize);
-        bDiffThread.start();
         started = true;
     }
 
     private NetworkMsgListener rangingStartlistener = new NetworkMsgListener() {
-        private long startTime;
-        private long delay = FlagVar.playThreadDelay;//毫秒
-        private boolean recved = false;
         @Override
         public void handleMsg(String msg) {
             Common.println("rangingStartlistener");
             if(aMode){
                 if(msg.equals(FlagVar.bModeStr)){
+                    aModeStart();
                     Common.println("get aModeStr.");
-                    startTime = (new Date()).getTime();
-                    recved = true;
                 }
                 else if(msg.equals(FlagVar.aModeStr)){
                     showToast("未能同时开启A、B两种模式。");
@@ -413,9 +401,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             }
             else if(bMode){
                 if(msg.equals(FlagVar.aModeStr)){
+                    bModeStart();
                     Common.println("get bModeStr.");
-                    startTime = (new Date()).getTime();
-                    recved = true;
                 }
                 else if(msg.equals(FlagVar.bModeStr)){
                     showToast("未能同时开启A、B两种模式。");
@@ -424,48 +411,24 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             }
         }
 
-        @Override
-        public void doPerTurn(){
-            if(aMode){
-                if(recved){
-                    Common.println("recved");
-                    long time = (new Date()).getTime();
-                    if(time-startTime > delay){
-                        Common.println("aModeStart");
-                        recved = false;
-                        aModeStart();
-                    }
-                }
-            }else if(bMode){
-                if(recved){
-                    Common.println("recved");
-                    long time = (new Date()).getTime();
-                    if(time-startTime > delay){
-                        Common.println("bModeStart");
-                        recved = false;
-                        bModeStart();
-                    }
-                }
-            }
-        }
     };
 
     private void judgeCanStart(){
-        if(isConnected && (aMode || bMode)){
-            setButtonEnabled(startButton,true);
-            Common.println("judegeCanStart.");
-            currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
-            NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
-                @Override
-                public void handleMsg(String msg) {
-                    if(msg.equals(FlagVar.rangingEndStr)) {
-                        currentP2pThread.setMessage(FlagVar.rangingEndStr);
-                        stopRanging();
-                        currentP2pThread.removeListener(FlagVar.rangingEndStr);
+            if(isConnected && (aMode || bMode)){
+                setButtonEnabled(startButton,true);
+                Common.println("judgeCanStart.");
+                currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
+                NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
+                    @Override
+                    public void handleMsg(String msg) {
+                        if(msg.equals(FlagVar.rangingEndStr)) {
+                            currentP2pThread.setMessage(FlagVar.rangingEndStr);
+                            stopRanging();
+                            currentP2pThread.removeListener(FlagVar.rangingEndStr);
 
+                        }
                     }
-                }
-            };
+                };
             currentP2pThread.addListener(FlagVar.rangingEndStr,rangingEndListener);
         }else{
             setButtonEnabled(startButton,false);
@@ -599,20 +562,19 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                     judgeCanStart();
                 }
             }
-            else if(msg.what == FlagVar.DISTANCE_TEXT){
+            else if(msg.what == FlagVar.MAIN_TEXT){
                 Bundle bundle = msg.getData();
-                int distanceCnt = bundle.getInt("unhandledDistanceCnt");
-                float unhandledDistance = FlagVar.cSample * distanceCnt;
-                String unhandledDistanceStr = decimalFormat.format(unhandledDistance);
-                String unhandledSpeedStr = decimalFormat.format(bundle.getFloat("unhandledSpeed"));
+                int distanceCnt = bundle.getInt(FlagVar.unhandledDistanceCntStr);
+                String unhandledDistanceStr = decimalFormat.format(bundle.getFloat(FlagVar.unhandledDistanceStr));
+                String unhandledSpeedStr = decimalFormat.format(bundle.getFloat(FlagVar.unhandledSpeedStr));
 
-                String speedStr = decimalFormat.format(bundle.getFloat("speed"));
-                String distanceStr = decimalFormat.format(bundle.getFloat("distance"));
+                String speedStr = decimalFormat.format(bundle.getFloat(FlagVar.speedStr));
+                String distanceStr = decimalFormat.format(bundle.getFloat(FlagVar.distanceStr));
 
-                insertToLineGraphSeries(unhandledDistanceSeries, unhandledDistancePoints,unhandledDistance);
-                insertToLineGraphSeries(unhandledSpeedSeries, unhandledSpeedPoints,bundle.getFloat("unhandledSpeed"));
-                insertToLineGraphSeries(distanceSeries,distancePoints,bundle.getFloat("distance"));
-                insertToLineGraphSeries(speedSeries,speedPoints,bundle.getFloat("speed"));
+                insertToLineGraphSeries(unhandledDistanceSeries, unhandledDistancePoints,bundle.getFloat(FlagVar.unhandledDistanceStr));
+                insertToLineGraphSeries(unhandledSpeedSeries, unhandledSpeedPoints,bundle.getFloat(FlagVar.unhandledSpeedStr));
+                insertToLineGraphSeries(distanceSeries,distancePoints,bundle.getFloat(FlagVar.distanceStr));
+                insertToLineGraphSeries(speedSeries,speedPoints,bundle.getFloat(FlagVar.speedStr));
                 if(graphCnt > graphSize){
                     distanceGraph.getViewport().setXAxisBoundsManual(true);
                     speedGraph.getViewport().setXAxisBoundsManual(true);
@@ -786,14 +748,6 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             decodeThread.stopRunning();
             Common.println("decode stop.");
         }
-        if(aDiffThread != null){
-            aDiffThread.stopRunning();
-            Common.println("aDiff stop.");
-        }
-        if(bDiffThread != null){
-            bDiffThread.stopRunning();
-            Common.println("bDiff stop.");
-        }
 
     }
 
@@ -838,6 +792,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
     }
 
+
+    //only A phone can set the metrics and choose self adaption mode.
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         /**

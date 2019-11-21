@@ -57,6 +57,7 @@ public class ClientThread extends WifiP2pThread{
                 if (bufferedReader.ready() && (info = bufferedReader.readLine()) != null) {
 //                    Common.println("client:"+info);
                     listenersHandleMsg(info);
+
                     Message msg = new Message();
                     msg.what = FlagVar.NETWORK_TEXT;
                     msg.obj = info;

@@ -1,4 +1,4 @@
-package com.example.jrnjsyx.beepbeep.processing.thread;
+package com.example.jrnjsyx.beepbeep.processing;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -6,6 +6,7 @@ import android.os.Message;
 
 import com.example.jrnjsyx.beepbeep.activity.MainActivity;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
+import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 
@@ -14,11 +15,9 @@ import org.ejml.equation.Equation;
 import org.ejml.equation.Sequence;
 
 
-public class ADiffThread extends Thread{
+public class KalmanFilter{
     private DecodeThread decodeThread;
-    private Handler handler;
-    private boolean isRunning = true;
-    private int step;
+    private int step = FlagVar.chirpInterval;
     private DMatrixRMaj F = new DMatrixRMaj(2,2);
     private DMatrixRMaj x = new DMatrixRMaj(2,1);
     private DMatrixRMaj z = new DMatrixRMaj(2,1);
@@ -35,8 +34,9 @@ public class ADiffThread extends Thread{
     private int speedAbnormalCnt = 0;
     private float oldDistance;
     private float oldSpeed;
-    private float unhandledDistance;
-    private float unhandledSpeed;
+    public float unhandledDistance;
+    public float unhandledSpeed;
+    public int distanceCnt;
     private DMatrixRMaj Q0 = new DMatrixRMaj(2,2);
     private DMatrixRMaj R0 = new DMatrixRMaj(2,2);
     double[] curveMetric = Algorithm.threePointDeterminationCurve(new double[]{60,20,0},new double[]{1,2,10});
@@ -44,13 +44,11 @@ public class ADiffThread extends Thread{
 
     Equation eq = new Equation();
 
-    private float distance;
-    private float speed;
+    public float distance;
+    public float speed;
     //A 发出低频chirp信号
-    public ADiffThread(DecodeThread decodeThread, Handler handler,int step){
+    public KalmanFilter(DecodeThread decodeThread){
         this.decodeThread = decodeThread;
-        this.handler = handler;
-        this.step = step;
 
         Q0.set(0,0,10);
         Q0.set(1,1,10);
@@ -79,64 +77,38 @@ public class ADiffThread extends Thread{
 
     }
 
-    @Override
-    public void run() {
+    public void computeOnce() {
 
-        Common.println("aDiff start.");
-        try{
-            while (isRunning){
-                if(decodeThread.dataOk) {
 
-                    decodeThread.dataOk = false;
-                    int unprocessedDistanceCnt = decodeThread.highChirpPosition-decodeThread.lowChirpPosition-(decodeThread.remoteHighChirpPosition-decodeThread.remoteLowChirpPosition);
-                    int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
-                    Common.println("distanceCnt:"+distanceCnt);
-                    unhandledDistance = FlagVar.cSample * distanceCnt;
-                    unhandledSpeed = decodeThread.speed;
-                    if(Math.abs(oldDistance+FlagVar.chirpIntervalTime*oldSpeed-unhandledDistance) > FlagVar.distanceThreshold && distanceAbnormalCnt < 4){
-                        distanceAbnormalCnt++;
-                    }
-                    else{
-                        distanceAbnormalCnt = 0;
-                        distance = unhandledDistance;
-                    }
-                    if(Math.abs(oldSpeed-unhandledSpeed) > FlagVar.speedThreshold && speedAbnormalCnt < 4){
-                        speedAbnormalCnt++;
-                    }
-                    else{
-                        speedAbnormalCnt = 0;
-                        speed = unhandledSpeed;
-                    }
-
-                    if(FlagVar.currentRangingMode != FlagVar.BEEP_BEEP_MODE) {
-                        computeUsingKalman();
-                    }
-
-                    oldDistance = distance;
-                    oldSpeed = speed;
-                    Message msg = new Message();
-                    Bundle bundle = new Bundle();
-                    bundle.putFloat("unhandledSpeed",unhandledSpeed);
-                    bundle.putFloat("unhandledDistance",unhandledDistance);
-                    bundle.putInt("unhandledDistanceCnt",distanceCnt);
-                    bundle.putFloat("speed",this.speed);
-                    bundle.putFloat("distance",this.distance);
-
-                    msg.what = FlagVar.DISTANCE_TEXT;
-                    msg.setData(bundle);
-                    handler.sendMessage(msg);
-
-                }
-            }
-        }catch (Exception e){
-            e.printStackTrace();
+        int unprocessedDistanceCnt = decodeThread.highChirpPosition-decodeThread.lowChirpPosition-(decodeThread.remoteHighChirpPosition-decodeThread.remoteLowChirpPosition);
+        distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,step);
+        Common.println("distanceCnt:"+distanceCnt);
+        unhandledDistance = FlagVar.cSample * distanceCnt;
+        unhandledSpeed = decodeThread.speed;
+        if(Math.abs(oldDistance+FlagVar.chirpIntervalTime*oldSpeed-unhandledDistance) > FlagVar.distanceThreshold && distanceAbnormalCnt < 4){
+            distanceAbnormalCnt++;
+        }
+        else{
+            distanceAbnormalCnt = 0;
+            distance = unhandledDistance;
+        }
+        if(Math.abs(oldSpeed-unhandledSpeed) > FlagVar.speedThreshold && speedAbnormalCnt < 4){
+            speedAbnormalCnt++;
+        }
+        else{
+            speedAbnormalCnt = 0;
+            speed = unhandledSpeed;
         }
 
+        if(FlagVar.currentRangingMode != FlagVar.BEEP_BEEP_MODE) {
+            computeUsingKalman();
+        }
+
+
+
+
     }
 
-    public void stopRunning(){
-        isRunning = false;
-    }
 
     private void computeUsingKalman(){
         z.set(0,0,distance);
@@ -170,7 +142,8 @@ public class ADiffThread extends Thread{
         updateP.perform();
         distance = (float) x.get(0,0);
         speed = (float)x.get(1,0);
-
+        oldDistance = distance;
+        oldSpeed = speed;
 
     }
 

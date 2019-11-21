@@ -11,7 +11,6 @@ public class FlagVar {
     public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
-
     public static int lowFStart = 16000;
     public static int highFStart = 20500;
     public static int bChirp2 = highFStart*bChirp/(bChirp+lowFStart);
@@ -31,60 +30,50 @@ public class FlagVar {
 //    public static int recordBufferSize = 4096*2;
 
 
-
+    public static String unhandledSpeedStr = "unhandledSpeed";
+    public static String speedStr = "speed";
+    public static String unhandledDistanceStr = "unhandledDistance";
+    public static String distanceStr = "distance";
+    public static String unhandledDistanceCntStr = "unhandledDistanceCnt";
     public static String connectionStartStr = "connectionStart";
     public static String connectionThreadEndStr = "connectionEnd";
     public static String aModeStr = "aMode";
     public static String bModeStr = "bMode";
-    public static String rangingStartStr = "rangingStartStr";
+    public static String rangingStartStr = "rangingStart";
     public static String rangingEndStr = "rangingEnd";
-    public static String lowPosStr = "lowPosStr";
-    public static String skipStr = "skipStr";
-    public static String highPosStr = "highPosStr";
-    public static String recordStr = "recordStr";
-    public static String speedStr = "speedStr";
-
-
-
-    public static int previousIndexThreshold = 300;
-    public static int twiceIndexThreshold = 200;
+    public static String lowPosStr = "lowPos";
+    public static String skipStr = "skip";
+    public static String highPosStr = "highPos";
+    public static String recordStr = "record";
 
     public static int NETWORK_TEXT = 0;
-    public static int DISTANCE_TEXT = 1;
+    public static int MAIN_TEXT = 1;
     public static int DEBUG_TEXT = 2;
-    public static int minPosDataCapacity = 9;
-    public static int adjustThreshold = 4;
-    public static int diffThreshold = 1000;
+
     public static int BEEP_BEEP_MODE = 0;
     //abandoned
     public static int MY_ORIGINAL_MODE = 1;
     public static int MY_NEW_MODE = 2;
     public static int currentRangingMode = MY_NEW_MODE;
+
+    public static int minPosDataCapacity = 9;
+    public static int adjustThreshold = 4;
+    public static int diffThreshold = 1000;
     public static int speedEstimateBufferLength = 65536;
     public static int speedEstimateRangeF = 40;
     public static int soundSpeed = 34000;
     public static int speedThreshold = 200;
     public static int distanceThreshold = 100;
-
     public static int playThreadDelay = 10;
-
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
     public static int lSine = 1000;
-
     public static int startBeforeMaxCorr = 200;
     public static int endBeforeMaxCorr = 0;
     public static int cSound = 34000;
     public static float cSample = (float)cSound/Fs/2;
-
-    public static int B_BUTTON_ENABLE = 1;
-    public static int A_BUTTON_ENABLE = 2;
-
-    public static int speedOffset = 0;
-
     public static float maxAvgRatioThreshold = 6f;
     public static float ratioThreshold = 9;
     public static float ratioAvailableThreshold = 0.4f;
-
     public static int PORT = 34567;
 
 
