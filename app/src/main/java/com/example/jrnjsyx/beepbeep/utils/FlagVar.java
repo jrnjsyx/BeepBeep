@@ -30,11 +30,11 @@ public class FlagVar {
 //    public static int recordBufferSize = 4096*2;
 
 
-    public static String unhandledSpeedStr = "unhandledSpeed";
+    public static String unhandledSpeedStr = "unProcessedSpeed";
     public static String speedStr = "speed";
-    public static String unhandledDistanceStr = "unhandledDistance";
+    public static String unhandledDistanceStr = "unProcessedDistance";
     public static String distanceStr = "distance";
-    public static String unhandledDistanceCntStr = "unhandledDistanceCnt";
+    public static String unhandledDistanceCntStr = "unProcessedDistanceCnt";
     public static String connectionStartStr = "connectionStart";
     public static String connectionThreadEndStr = "connectionEnd";
     public static String aModeStr = "aMode";

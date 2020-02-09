@@ -238,6 +238,11 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         speedGraph = (GraphView)findViewById(R.id.speedGraph);
         distanceGraph.addSeries(distanceSeries);
         distanceGraph.addSeries(unhandledDistanceSeries);
+
+        distanceGraph.getGridLabelRenderer().setVerticalAxisTitle("distance/cm");
+        distanceGraph.getGridLabelRenderer().setHorizontalAxisTitle("Time/0.25s");
+        speedGraph.getGridLabelRenderer().setVerticalAxisTitle("speed/cm/s");
+        speedGraph.getGridLabelRenderer().setHorizontalAxisTitle("Time/0.25s");
         speedGraph.addSeries(speedSeries);
         speedGraph.addSeries(unhandledSpeedSeries);
         unhandledDistanceSeries.setColor(Color.RED);
@@ -585,7 +590,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 }
 
                 graphCnt++;
-                String str = "distanceCnt:"+distanceCnt+"\nunhandledDistance:"+unhandledDistanceStr+"\nunhandledSpeed:"+unhandledSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
+                String str = "distanceCnt:"+distanceCnt+"\nunprocessedDistance:"+unhandledDistanceStr+"\nunprocessedSpeed:"+unhandledSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){
@@ -773,14 +778,17 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             for(String permission:permissions){
                 int i = ContextCompat.checkSelfPermission(this, permission);
                 if (i != PackageManager.PERMISSION_GRANTED) {
-                    showToast("需要在设置中打开麦克风、存储权限。");
+//                    showToast("请在设置中打开麦克风、存储权限。");
+                    showToast("Please turn on the microphone and storage permissions in the settings.");
                     return false;
                 }
             }
             return true;
 
         }else{
-            showToast("您的android版本过低，无法判断权限是否打开，请自行在设置中打开麦克风、存储权限。");
+
+//            showToast("您的android版本过低，无法判断权限是否打开，请自行在设置中打开麦克风、存储权限。");
+            showToast("Your android version is too low to determine whether permissions are enabled. Please turn on the microphone and storage permissions in the settings yourself.");
             return true;
         }
 
@@ -803,17 +811,29 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
          * 3）order：菜单排序，数值越小越排在前
          * 4）title：菜单名称
          */
-        SubMenu showSettingSubMenu = menu.addSubMenu("显示模式");
-        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.GRAPH_MODE, 0, "图表模式");
-        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.STRING_MODE,1,"文字模式");
-        menu.add(FlagVar.METRIC_SETTING,FlagVar.METRIC_MODE,0,"参数设置");
-        SubMenu seriesSettingSubMenu = menu.addSubMenu("隐藏/显示数据");
-        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.UNHANDLED_SERIES_MODE,0,"显示原始数据");
-        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.HANDLED_SERIES_MODE,1,"显示新数据");
-        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.ALL_SERIES_MODE,2,"显示全部数据");
-        SubMenu selfAdaptionSettingMenu = menu.addSubMenu("自适应模式");
-        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"自适应模式");
-        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"手动模式");
+//        SubMenu showSettingSubMenu = menu.addSubMenu("显示模式");
+//        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.GRAPH_MODE, 0, "图表模式");
+//        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.STRING_MODE,1,"文字模式");
+//        menu.add(FlagVar.METRIC_SETTING,FlagVar.METRIC_MODE,0,"参数设置");
+//        SubMenu seriesSettingSubMenu = menu.addSubMenu("隐藏/显示数据");
+//        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.UNHANDLED_SERIES_MODE,0,"显示原始数据");
+//        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.HANDLED_SERIES_MODE,1,"显示新数据");
+//        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.ALL_SERIES_MODE,2,"显示全部数据");
+//        SubMenu selfAdaptionSettingMenu = menu.addSubMenu("自适应模式");
+//        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"自适应模式");
+//        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"手动模式");
+
+        SubMenu showSettingSubMenu = menu.addSubMenu("Display Setting");
+        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.GRAPH_MODE, 0, "Graph Mode");
+        showSettingSubMenu.add(FlagVar.SHOW_SETTING,FlagVar.STRING_MODE,1,"Text Mode");
+        menu.add(FlagVar.METRIC_SETTING,FlagVar.METRIC_MODE,0,"Metric Setting");
+        SubMenu seriesSettingSubMenu = menu.addSubMenu("Hide/Display Data");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.UNHANDLED_SERIES_MODE,0,"Display Unprocessed Data");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.HANDLED_SERIES_MODE,1,"Display Processed Data");
+        seriesSettingSubMenu.add(FlagVar.SERIES_SETTING,FlagVar.ALL_SERIES_MODE,2,"Display All Data");
+        SubMenu selfAdaptionSettingMenu = menu.addSubMenu("Self Adaption Setting");
+        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"Self Adaption Mode");
+        selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"Free Mode");
         return true;
     }
 
@@ -925,10 +945,10 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         r22EditText = longinDialogView.findViewById(R.id.edit_r22);
 
         Dialog dialog = new AlertDialog.Builder(this)
-             .setTitle("登录框")
+             .setTitle("Metric Setting")
              .setView(longinDialogView)                //加载自定义的对话框式样
-             .setPositiveButton("确定", dialogOnClickListener)
-             .setNeutralButton("取消", dialogOnClickListener)
+             .setPositiveButton("Ok", dialogOnClickListener)
+             .setNeutralButton("Cancel", dialogOnClickListener)
              .create();
 
         q11EditText.setText(FlagVar.Q.get(0,0)+"");
