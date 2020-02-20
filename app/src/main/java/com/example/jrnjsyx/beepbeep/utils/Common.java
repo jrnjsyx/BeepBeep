@@ -82,6 +82,51 @@ public class Common {
         }
     }
 
+    public static void saveStrings(List<String> data, String name){
+        File file = new File(SDPATH+name+".txt");
+        FileWriter fw = null;
+        try {
+            fw = new FileWriter(file);
+            if(!file.exists())
+                file.createNewFile();
+            for(String str:data){
+                fw.write(str + "\r\n");
+                fw.flush();
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            try {
+                if(fw != null)
+                    fw.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void saveString(String data, String name){
+        File file = new File(SDPATH+name+".txt");
+        FileWriter fw = null;
+        try {
+            fw = new FileWriter(file);
+            if(!file.exists()) {
+                file.createNewFile();
+            }
+            fw.write(data + "\r\n");
+            fw.flush();
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            try {
+                if(fw != null)
+                    fw.close();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static void saveInts(int[] data, String name){
         File file = new File(SDPATH+name+".txt");
         FileWriter fw = null;

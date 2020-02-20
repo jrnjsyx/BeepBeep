@@ -109,6 +109,12 @@ public class KalmanFilter{
 
     }
 
+    public String getDataStr(){
+        String str = "";
+        str += unhandledDistance+"\t" +unhandledSpeed+"\t"+distance+"\t"+speed;
+        return str;
+    }
+
 
     private void computeUsingKalman(){
         z.set(0,0,distance);

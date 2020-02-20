@@ -351,6 +351,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             playThread = new PlayThread(Decoder.lowUpChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
+            playThread = new PlayThread(Decoder.lowUpChirp);
         }
         playThread.start();
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,true);
@@ -374,8 +376,11 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 //            playThread = new PlayThread(Decoder.highDownChirp);
             playThread = new PlayThread(Decoder.highChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
-            playThread = new PlayThread(Decoder.chirpAndSine);
+            playThread = new PlayThread(Decoder.highChirp2);
+        }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
+            playThread = new PlayThread(Decoder.highUpChirp);
         }
+
         playThread.start();
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,false);
         new Thread(decodeThread).start();
@@ -606,7 +611,17 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                     debugTextView.setTextColor(Color.BLACK);
                 }
             }
+            else if(msg.what == FlagVar.BEEP_MAIN_TEXT){
+                float distance = FlagVar.cSample * msg.arg1;
+                String distanceStr = decimalFormat.format(distance);
+                String str = "distanceCnt:"+msg.arg1+"\ndistance:"+distanceStr;
+                distanceTextView.setText(str);
+            }
+            else if(msg.what == FlagVar.BEEP_MAIN_TEXT_END){
+                String str = distanceTextView.getText()+"\n"+(String)msg.obj;
 
+                distanceTextView.setText(str);
+            }
 
         }
     };
@@ -749,6 +764,19 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         if(decodeThread != null) {
             if(Common.isDebug) {
                 Common.saveShorts(decodeThread.savedData, "savedData");
+                Common.saveStrings(decodeThread.savedMainData,"savedMainData");
+                Common.println("savedMainData size:"+decodeThread.savedMainData.size());
+                String foundCntStr = "lowFoundCnt:"+decodeThread.lowFoundCnt+
+                        "\nhighFoundCnt:"+decodeThread.highFoundCnt+
+                        "\nmLoopCounter:"+decodeThread.mLoopCounter+
+                        "\nfrontFoundCnt:"+decodeThread.frontFoundCnt+
+                        "\nbackFoundCnt:"+decodeThread.backFoundCnt;
+                Common.saveString(foundCntStr,"savedFoundCnt");
+                Message msg = new Message();
+                msg.what = FlagVar.BEEP_MAIN_TEXT_END;
+                msg.obj = foundCntStr;
+                myHandler.sendMessage(msg);
+
             }
             decodeThread.stopRunning();
             Common.println("decode stop.");
@@ -834,6 +862,12 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         SubMenu selfAdaptionSettingMenu = menu.addSubMenu("Self Adaption Setting");
         selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"Self Adaption Mode");
         selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"Free Mode");
+        SubMenu beepModeSetting = menu.addSubMenu("Beep Mode Setting");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.BEEP_BEEP_MODE,0,"Beep Beep Mode");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.ORIGINAL_BEEP_BEEP_MODE,1,"Beep Beep Mode(o)");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.MY_ORIGINAL_MODE,1,"Motion Beep Mode(o)");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.MY_NEW_MODE,1,"Motion Beep Mode(n)");
+
         return true;
     }
 
@@ -888,9 +922,24 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             case FlagVar.SELF_ADAPTION_MODE:
                 FlagVar.currentSelfAdaptionMode = FlagVar.SELF_ADAPTION_MODE;
                 break;
-            case FlagVar.FREE_MODE:
+            case FlagVar.FREE_MODE: {
                 FlagVar.currentSelfAdaptionMode = FlagVar.FREE_MODE;
                 break;
+            }
+            case FlagVar.BEEP_BEEP_MODE:
+                FlagVar.currentRangingMode = FlagVar.BEEP_BEEP_MODE;
+                break;
+            case FlagVar.MY_ORIGINAL_MODE:
+                FlagVar.currentRangingMode = FlagVar.MY_ORIGINAL_MODE;
+                break;
+            case FlagVar.MY_NEW_MODE: {
+                FlagVar.currentRangingMode = FlagVar.MY_NEW_MODE;
+                break;
+            }
+            case FlagVar.ORIGINAL_BEEP_BEEP_MODE:
+                FlagVar.currentRangingMode = FlagVar.ORIGINAL_BEEP_BEEP_MODE;
+                break;
+
 
         }
         return true;

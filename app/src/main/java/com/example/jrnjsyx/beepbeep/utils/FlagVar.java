@@ -15,6 +15,7 @@ public class FlagVar {
     public static int highFStart = 20500;
     public static int bChirp2 = highFStart*bChirp/(bChirp+lowFStart);
     public static int chirpInterval = 4000*3;
+//    public static int chirpInterval = 19600;
     public static int chirpIntervalTime = chirpInterval/Fs;
     public static int playBufferSize = chirpInterval;
     public static int recordBufferSize = chirpInterval;
@@ -49,12 +50,9 @@ public class FlagVar {
     public static int NETWORK_TEXT = 0;
     public static int MAIN_TEXT = 1;
     public static int DEBUG_TEXT = 2;
+    public static int BEEP_MAIN_TEXT = 3;
+    public static int BEEP_MAIN_TEXT_END = 4;
 
-    public static int BEEP_BEEP_MODE = 0;
-    //abandoned
-    public static int MY_ORIGINAL_MODE = 1;
-    public static int MY_NEW_MODE = 2;
-    public static int currentRangingMode = MY_NEW_MODE;
 
     public static int minPosDataCapacity = 9;
     public static int adjustThreshold = 4;
@@ -72,7 +70,7 @@ public class FlagVar {
     public static int cSound = 34000;
     public static float cSample = (float)cSound/Fs/2;
     public static float maxAvgRatioThreshold = 6f;
-    public static float ratioThreshold = 9;
+    public static float ratioThreshold = 12;
     public static float ratioAvailableThreshold = 0.4f;
     public static int PORT = 34567;
 
@@ -101,6 +99,14 @@ public class FlagVar {
     final static public int SELF_ADAPTION_SETTING = 9;
     final static public int SELF_ADAPTION_MODE = 10;
     final static public int FREE_MODE = 11;
+    final static public int BEEP_MODE_SETTING = 12;
+    final static public int BEEP_BEEP_MODE = 13;
+    //Motion Beep best effect
+    final public static int MY_ORIGINAL_MODE = 14;
+    final public static int MY_NEW_MODE = 15;
+    final public static int ORIGINAL_BEEP_BEEP_MODE = 16;
+    public static int currentRangingMode = BEEP_BEEP_MODE;
+
 
     static public int currentSeriesMode = ALL_SERIES_MODE;
     static public int currentSelfAdaptionMode = FREE_MODE;

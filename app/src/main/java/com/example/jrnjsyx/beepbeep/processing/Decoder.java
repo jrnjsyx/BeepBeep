@@ -1,6 +1,7 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
 import com.example.jrnjsyx.beepbeep.physical.SignalGenerator;
+import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
@@ -17,6 +18,7 @@ public class Decoder {
     public static short[] highChirp = SignalGenerator.addSig(highDownChirp,highUpChirp);
     public static short[] sines = SignalGenerator.multipleSineWaveGenerator(FlagVar.frequencies,FlagVar.Fs,FlagVar.lSine);
     public static short[] chirpAndSine = SignalGenerator.addSig(highDownChirp,sines);
+    public static short[] highChirp2 = SignalGenerator.sigAverage(highDownChirp,highUpChirp);
 
 
 
@@ -25,7 +27,9 @@ public class Decoder {
 
     public int processBufferSize;
 
-    public int chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp, FlagVar.lChirp);
+    public int chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp+FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
+    public int halfChirpCorrLen = getFFTLen(processBufferSize/2+ FlagVar.lChirp+FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
+
 
     //we calculate the fft before decoding in order to reduce computation time.
     public float[] lowUpChirpFFT;
@@ -44,6 +48,7 @@ public class Decoder {
     public void initialize(int processBufferSize){
         this.processBufferSize = processBufferSize;
         chirpCorrLen = getFFTLen(processBufferSize+ FlagVar.lChirp +FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
+        halfChirpCorrLen = getFFTLen(processBufferSize/2+ FlagVar.lChirp+FlagVar.startBeforeMaxCorr, FlagVar.lChirp);
 
         //compute the fft of the preambles and symbols to reduce the computation cost;
         lowUpChirpFFT = new float[chirpCorrLen];
@@ -133,7 +138,9 @@ public class Decoder {
 
 //        IndexMaxVarInfo info = Algorithm.getMaxInfo(corr,0,processBufferSize);
         indexMaxVarInfo.isReferenceSignalExist = true;
-        return indexMaxVarInfo;
+
+        IndexMaxVarInfo resultInfo = preambleDetection(corr, indexMaxVarInfo);
+        return resultInfo;
     }
 
 
@@ -245,10 +252,10 @@ public class Decoder {
         maRatio = indexMaxVarInfo.fitVal;
         maRatio = maRatio/corr[indexMaxVarInfo.index];
         ratio = (float) (maRatio*Math.log(corr[indexMaxVarInfo.index]+1));
-        if(maRatio > FlagVar.maxAvgRatioThreshold && ratio > FlagVar.ratioThreshold && isIndexAvailable(indexMaxVarInfo)) {
+        if(maRatio > FlagVar.maxAvgRatioThreshold && ratio > FlagVar.ratioThreshold ) {
             indexMaxVarInfo.isReferenceSignalExist = true;
         }
-//        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+FlagVar.maxAvgRatioThreshold+"  rThreshold:"+FlagVar.ratioThreshold);
+        Common.println("index:"+indexMaxVarInfo.index+"   ratio:"+ratio+"   maRatio:"+maRatio+"  marThreshold:"+FlagVar.maxAvgRatioThreshold+"  rThreshold:"+FlagVar.ratioThreshold);
         return indexMaxVarInfo;
     }
 
