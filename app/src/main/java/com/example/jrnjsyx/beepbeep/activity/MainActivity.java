@@ -131,11 +131,13 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     private boolean started = false;
 
     private LineGraphSeries<DataPoint> unhandledDistanceSeries = new LineGraphSeries<>();
+    private LineGraphSeries<DataPoint> distanceForBeepSeries = new LineGraphSeries<>();
     private LineGraphSeries<DataPoint> unhandledSpeedSeries = new LineGraphSeries<>();
     private LineGraphSeries<DataPoint> distanceSeries = new LineGraphSeries<>();
     private LineGraphSeries<DataPoint> speedSeries = new LineGraphSeries<>();
     private int graphSize = 50;
     private DataPoint[] unhandledDistancePoints = new DataPoint[graphSize];
+    private DataPoint[] distanceForBeepPoints = new DataPoint[graphSize];
     private DataPoint[] unhandledSpeedPoints = new DataPoint[graphSize];
     private DataPoint[] distancePoints = new DataPoint[graphSize];
     private DataPoint[] speedPoints = new DataPoint[graphSize];
@@ -238,6 +240,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         speedGraph = (GraphView)findViewById(R.id.speedGraph);
         distanceGraph.addSeries(distanceSeries);
         distanceGraph.addSeries(unhandledDistanceSeries);
+        distanceGraph.addSeries(distanceForBeepSeries);
 
         distanceGraph.getGridLabelRenderer().setVerticalAxisTitle("distance/cm");
         distanceGraph.getGridLabelRenderer().setHorizontalAxisTitle("Time/0.25s");
@@ -248,7 +251,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         unhandledDistanceSeries.setColor(Color.RED);
         unhandledSpeedSeries.setColor(Color.RED);
         distanceSeries.setColor(Color.BLUE);
-        distanceSeries.setColor(Color.BLUE);
+        speedSeries.setColor(Color.BLUE);
+        distanceForBeepSeries.setColor(Color.GREEN);
 
 
         aButton.setOnClickListener(onClickListener);
@@ -580,8 +584,10 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
                 String speedStr = decimalFormat.format(bundle.getFloat(FlagVar.speedStr));
                 String distanceStr = decimalFormat.format(bundle.getFloat(FlagVar.distanceStr));
+                String distanceForBeepStr = decimalFormat.format(bundle.getFloat(FlagVar.distanceForBeepStr));
 
                 insertToLineGraphSeries(unhandledDistanceSeries, unhandledDistancePoints,bundle.getFloat(FlagVar.unhandledDistanceStr));
+                insertToLineGraphSeries(distanceForBeepSeries, distanceForBeepPoints,bundle.getFloat(FlagVar.distanceForBeepStr));
                 insertToLineGraphSeries(unhandledSpeedSeries, unhandledSpeedPoints,bundle.getFloat(FlagVar.unhandledSpeedStr));
                 insertToLineGraphSeries(distanceSeries,distancePoints,bundle.getFloat(FlagVar.distanceStr));
                 insertToLineGraphSeries(speedSeries,speedPoints,bundle.getFloat(FlagVar.speedStr));
@@ -592,10 +598,22 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                     distanceGraph.getViewport().setMaxX(graphCnt);
                     speedGraph.getViewport().setMinX(graphCnt-graphSize);
                     speedGraph.getViewport().setMaxX(graphCnt);
+                }else{
+                    distanceGraph.getViewport().setXAxisBoundsManual(true);
+                    speedGraph.getViewport().setXAxisBoundsManual(true);
+                    distanceGraph.getViewport().setMinX(1);
+                    distanceGraph.getViewport().setMaxX(graphCnt);
+                    speedGraph.getViewport().setMinX(1);
+                    speedGraph.getViewport().setMaxX(graphCnt);
                 }
 
                 graphCnt++;
-                String str = "distanceCnt:"+distanceCnt+"\nunprocessedDistance:"+unhandledDistanceStr+"\nunprocessedSpeed:"+unhandledSpeedStr+"\ndistance:"+distanceStr+"\nspeed:"+speedStr;
+                String str = "distanceCnt:"+distanceCnt+
+                        "\nunprocessedDistance:"+unhandledDistanceStr+
+                        "\nunprocessedSpeed:"+unhandledSpeedStr+
+                        "\ndistance:"+distanceStr+
+                        "\nspeed:"+speedStr+
+                        "\ndistanceForBeep"+distanceForBeepStr;
                 distanceTextView.setText(str);
             }
             else if(msg.what == FlagVar.DEBUG_TEXT){
@@ -900,6 +918,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 FlagVar.currentShowMode = FlagVar.UNHANDLED_SERIES_MODE;
                 distanceGraph.removeAllSeries();
                 distanceGraph.addSeries(unhandledDistanceSeries);
+                distanceGraph.addSeries(distanceForBeepSeries);
                 speedGraph.removeAllSeries();
                 speedGraph.addSeries(unhandledSpeedSeries);
                 break;
@@ -915,6 +934,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 distanceGraph.removeAllSeries();
                 distanceGraph.addSeries(distanceSeries);
                 distanceGraph.addSeries(unhandledDistanceSeries);
+                distanceGraph.addSeries(distanceForBeepSeries);
                 speedGraph.removeAllSeries();
                 speedGraph.addSeries(speedSeries);
                 speedGraph.addSeries(unhandledSpeedSeries);

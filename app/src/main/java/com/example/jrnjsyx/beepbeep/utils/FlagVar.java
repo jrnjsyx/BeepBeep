@@ -36,6 +36,7 @@ public class FlagVar {
     public static String unhandledDistanceStr = "unProcessedDistance";
     public static String distanceStr = "distance";
     public static String unhandledDistanceCntStr = "unProcessedDistanceCnt";
+    public static String distanceForBeepStr = "distanceForBeep";
     public static String connectionStartStr = "connectionStart";
     public static String connectionThreadEndStr = "connectionEnd";
     public static String aModeStr = "aMode";
@@ -45,6 +46,7 @@ public class FlagVar {
     public static String lowPosStr = "lowPos";
     public static String skipStr = "skip";
     public static String highPosStr = "highPos";
+    public static String highUpPosStr = "highUpPos";
     public static String recordStr = "record";
 
     public static int NETWORK_TEXT = 0;
@@ -105,11 +107,11 @@ public class FlagVar {
     final public static int MY_ORIGINAL_MODE = 14;
     final public static int MY_NEW_MODE = 15;
     final public static int ORIGINAL_BEEP_BEEP_MODE = 16;
-    public static int currentRangingMode = BEEP_BEEP_MODE;
+    public static int currentRangingMode = MY_ORIGINAL_MODE;
 
 
     static public int currentSeriesMode = ALL_SERIES_MODE;
-    static public int currentSelfAdaptionMode = FREE_MODE;
+    static public int currentSelfAdaptionMode = SELF_ADAPTION_MODE;
 
     static public int currentShowMode = STRING_MODE;
 }

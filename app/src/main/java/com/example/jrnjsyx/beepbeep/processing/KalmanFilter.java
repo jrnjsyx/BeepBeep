@@ -1,11 +1,5 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-
-import com.example.jrnjsyx.beepbeep.activity.MainActivity;
-import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
@@ -39,7 +33,9 @@ public class KalmanFilter{
     public int distanceCnt;
     private DMatrixRMaj Q0 = new DMatrixRMaj(2,2);
     private DMatrixRMaj R0 = new DMatrixRMaj(2,2);
-    double[] curveMetric = Algorithm.threePointDeterminationCurve(new double[]{60,20,0},new double[]{1,2,10});
+    double[] curveMetricForDistance = Algorithm.threePointDeterminationCurve(new double[]{60,20,0},new double[]{1,2,5});
+    double[] curveMetricForSpeed = Algorithm.threePointDeterminationCurve(new double[]{60,20,0},new double[]{0.7,2,10});
+
 
 
     Equation eq = new Equation();
@@ -128,16 +124,23 @@ public class KalmanFilter{
         }
         else if(FlagVar.currentSelfAdaptionMode == FlagVar.SELF_ADAPTION_MODE){
             Q = new DMatrixRMaj(Q0);
-            double ratio = curveMetric[2]/(Math.abs(oldSpeed)-curveMetric[0])+curveMetric[1];
-            if(ratio < 0.5){
-                ratio = 0.5;
+            double ratioForDistance = curveMetricForDistance[2]/(Math.abs(oldSpeed)- curveMetricForDistance[0])+ curveMetricForDistance[1];
+            if(ratioForDistance < 0.5){
+                ratioForDistance = 0.5;
             }
-            double r11 = R0.get(0,0)*ratio;
-            double r12 = 0-Math.sqrt(r11*R0.get(1,1)/8);
+            double acceleration = (speed-oldSpeed)/(FlagVar.chirpInterval*1.0/FlagVar.Fs);
+            Common.println("a:"+acceleration+"  speed:"+speed+"  oldSpeed:"+oldSpeed);
+            double ratioForSpeed = curveMetricForSpeed[2]/(Math.abs(acceleration)-curveMetricForSpeed[0])+curveMetricForSpeed[1];
+            if(ratioForSpeed < 0.5){
+                ratioForSpeed = 0.5;
+            }
+            double r11 = R0.get(0,0)*ratioForDistance;
+            double r22 = R0.get(1,1)*ratioForSpeed;
+            double r12 = 0-Math.sqrt(r11*r22/8);
             R.set(0,0,r11);
             R.set(0,1,r12);
             R.set(1,0,r12);
-            R.set(1,1,R0.get(1,1));
+            R.set(1,1,r22);
 
         }
         eq.alias(Q,"Q",R,"R");

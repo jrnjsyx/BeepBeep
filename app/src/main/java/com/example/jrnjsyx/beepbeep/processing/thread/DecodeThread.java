@@ -34,8 +34,10 @@ public class DecodeThread extends Decoder implements Runnable {
     private WifiP2pThread currentP2pThread;
     public int lowChirpPosition;
     public int highChirpPosition;
+    public int highUpChirpPosition;
     public int remoteLowChirpPosition;
     public int remoteHighChirpPosition;
+    public int remoteHighUpChirpPosition;
     private int dataSavedSize = 409600;
     private PlayThread playThread;
     private boolean isChirpFrequencyLow = false;
@@ -158,10 +160,12 @@ public class DecodeThread extends Decoder implements Runnable {
     }
 
     private void saveAndSendPosition(int index,List<Integer> indexes,String flag){
-        synchronized (indexes) {
-            indexes.add(index);
-            if(indexes.size() > FlagVar.minPosDataCapacity){
-                indexes.remove(0);
+        if(indexes != null) {
+            synchronized (indexes) {
+                indexes.add(index);
+                if (indexes.size() > FlagVar.minPosDataCapacity) {
+                    indexes.remove(0);
+                }
             }
         }
         String msg = flag+" "+index;
@@ -176,7 +180,11 @@ public class DecodeThread extends Decoder implements Runnable {
         saveAndSendPosition(index,highChirpPositions,FlagVar.highPosStr);
     }
 
-    private void analysisDataForBecconDetetion(){
+    private void saveAndSendHighUpPos(int index){
+        saveAndSendPosition(index,null,FlagVar.highUpPosStr);
+    }
+
+    private void analysisDataForBecconDetection(){
         short[] dataFront = new short[FlagVar.lChirp+FlagVar.startBeforeMaxCorr+processBufferSize/2];
         short[] dataBack = new short[FlagVar.lChirp+FlagVar.startBeforeMaxCorr+processBufferSize/2];
         System.arraycopy(buffer,0,dataFront,0,dataFront.length);
@@ -380,8 +388,10 @@ public class DecodeThread extends Decoder implements Runnable {
                 mLoopCounter++;
             }
             analysisDataForMyNew();
-            saveAndSendLowPos(lowIndex);
-            saveAndSendHighPos(highIndex);
+//            saveAndSendLowPos(lowIndex);
+//            saveAndSendHighPos(highIndex);
+            saveAndSendLowPos(lowChirpPosition);
+            saveAndSendHighPos(highChirpPosition);
 
 
             isAdjusted = adJustSamples();
@@ -406,6 +416,7 @@ public class DecodeThread extends Decoder implements Runnable {
         float[] fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
         infoLow = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT);
         infoHigh = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT);
+        int highUpIndex = 0;
         if(infoLow.isReferenceSignalExist){
             lowFoundCnt++;
         }
@@ -438,12 +449,15 @@ public class DecodeThread extends Decoder implements Runnable {
             speed = (float) FlagVar.bChirp2*highDiff*FlagVar.soundSpeed/(FlagVar.highFStart-FlagVar.bChirp2/2)/FlagVar.lChirp/2;
 
             highIndex = infoHighDown.index;
+            highUpIndex = infoHighUp.index;
 //            previousHighIndexes[0] = infoHigh.index;
 //            previousHighIndexes[1] = infoHigh2.index;
         }
 
         else{
             highIndex = infoHigh.index;
+            highUpIndex = getIndexMaxVarInfoFromFDomain2(fft, highUpChirpFFT).index;
+
             int lows[] = new int[3];
             int highs[] = new int[3];
             for(int i=0;i<lows.length;i++){
@@ -473,6 +487,7 @@ public class DecodeThread extends Decoder implements Runnable {
         }
         lowChirpPosition = processBufferSize * mLoopCounter + lowIndex;
         highChirpPosition = processBufferSize * mLoopCounter + highIndex;
+        highUpChirpPosition = processBufferSize * mLoopCounter + highUpIndex;
     }
 
     private void runOnMyOriginalPerTurn(){
@@ -486,8 +501,11 @@ public class DecodeThread extends Decoder implements Runnable {
                 mLoopCounter++;
             }
             analysisDataForMyOriginal();
-            saveAndSendLowPos(lowIndex);
-            saveAndSendHighPos(highIndex);
+//            saveAndSendLowPos(lowIndex);
+//            saveAndSendHighPos(highIndex);
+            saveAndSendLowPos(lowChirpPosition);
+            saveAndSendHighPos(highChirpPosition);
+            saveAndSendHighUpPos(highUpChirpPosition);
 
 
             isAdjusted = adJustSamples();
@@ -498,6 +516,7 @@ public class DecodeThread extends Decoder implements Runnable {
             }
             if(isChirpFrequencyLow) {
                 kalmanFilter.computeOnce();
+                getDistanceForBeep();
                 sendMainMsgForLow();
 
             }
@@ -507,17 +526,26 @@ public class DecodeThread extends Decoder implements Runnable {
         }
     }
 
+    private float distanceForBeep = 0;
+    private void getDistanceForBeep(){
+        int unprocessedDistanceCnt = highUpChirpPosition-lowChirpPosition-(remoteHighUpChirpPosition-remoteLowChirpPosition);
+        int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,FlagVar.chirpInterval);
+        distanceForBeep = FlagVar.cSample * distanceCnt;
+    }
+
     private void sendMainMsgForLow(){
         currentP2pThread.setMessage(FlagVar.unhandledDistanceStr+" "+kalmanFilter.unhandledDistance);
         currentP2pThread.setMessage(FlagVar.unhandledSpeedStr+" "+kalmanFilter.unhandledSpeed);
         currentP2pThread.setMessage(FlagVar.unhandledDistanceCntStr+" "+kalmanFilter.distanceCnt);
         currentP2pThread.setMessage(FlagVar.speedStr+" "+kalmanFilter.speed);
         currentP2pThread.setMessage(FlagVar.distanceStr+" "+kalmanFilter.distance);
+        currentP2pThread.setMessage(FlagVar.distanceForBeepStr+" "+distanceForBeep);
         mainData.putFloat(FlagVar.unhandledSpeedStr,kalmanFilter.unhandledSpeed);
         mainData.putFloat(FlagVar.unhandledDistanceStr,kalmanFilter.unhandledDistance);
         mainData.putInt(FlagVar.unhandledDistanceCntStr,kalmanFilter.distanceCnt);
         mainData.putFloat(FlagVar.speedStr,kalmanFilter.speed);
         mainData.putFloat(FlagVar.distanceStr,kalmanFilter.distance);
+        mainData.putFloat(FlagVar.distanceForBeepStr,distanceForBeep);
     }
     private void sendAndSaveMainMsg(){
         Message msg = new Message();
@@ -527,7 +555,8 @@ public class DecodeThread extends Decoder implements Runnable {
         String mainDataStr = mainData.getFloat(FlagVar.unhandledDistanceStr)+"\t"+
                 mainData.getFloat(FlagVar.unhandledSpeedStr)+"\t"+
                 mainData.getFloat(FlagVar.distanceStr)+"\t"+
-                mainData.getFloat(FlagVar.speedStr);
+                mainData.getFloat(FlagVar.speedStr)+"\t"+
+                mainData.getFloat(FlagVar.distanceForBeepStr);
         savedMainData.add(mainDataStr);
     }
 
@@ -542,12 +571,14 @@ public class DecodeThread extends Decoder implements Runnable {
                 mLoopCounter++;
             }
             analysisData();
-            analysisDataForBecconDetetion();
+            analysisDataForBecconDetection();
 
 
 
-            saveAndSendLowPos(lowIndex);
-            saveAndSendHighPos(highIndex);
+//            saveAndSendLowPos(lowIndex);
+//            saveAndSendHighPos(highIndex);
+            saveAndSendLowPos(lowChirpPosition);
+            saveAndSendHighPos(highChirpPosition);
 
             isAdjusted = adJustSamples();
             if(isChirpFrequencyLow && isAdjusted){
@@ -652,12 +683,14 @@ public class DecodeThread extends Decoder implements Runnable {
                 mLoopCounter++;
             }
             analysisDataForOriginalBeep();
-            analysisDataForBecconDetetion();
+            analysisDataForBecconDetection();
 
 
 
-            saveAndSendLowPos(lowIndex);
-            saveAndSendHighPos(highIndex);
+//            saveAndSendLowPos(lowIndex);
+//            saveAndSendHighPos(highIndex);
+            saveAndSendLowPos(lowChirpPosition);
+            saveAndSendHighPos(highChirpPosition);
 
             isAdjusted = adJustSamples();
             if(isChirpFrequencyLow && isAdjusted){
@@ -869,6 +902,9 @@ public class DecodeThread extends Decoder implements Runnable {
                         remoteHighChirpPosition = Integer.parseInt(strs[1]);
                     }
                 }
+                else if(strs[0].equals(FlagVar.highUpPosStr)){
+                    remoteHighUpChirpPosition = Integer.parseInt(strs[1]);
+                }
                 else if(strs[0].equals(FlagVar.skipStr)){
                     synchronized (skip){
                         skip = Boolean.parseBoolean(strs[1]);
@@ -888,7 +924,9 @@ public class DecodeThread extends Decoder implements Runnable {
                 }
                 else if(strs[0].equals(FlagVar.unhandledSpeedStr)){
                     mainData.putFloat(FlagVar.unhandledSpeedStr,Float.parseFloat(strs[1]));
-
+                }
+                else if(strs[0].equals(FlagVar.distanceForBeepStr)){
+                    mainData.putFloat(FlagVar.distanceForBeepStr,Float.parseFloat(strs[1]));
                 }
             }
         }
