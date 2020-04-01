@@ -63,7 +63,7 @@ public class FlagVar {
     public static int speedEstimateRangeF = 40;
     public static int soundSpeed = 34000;
     public static int speedThreshold = 200;
-    public static int distanceThreshold = 100;
+    public static int distanceThreshold = 120;
     public static int playThreadDelay = 10;
     public static int lChirp = (int)(new BigDecimal(tChrip *Fs).setScale(0, BigDecimal.ROUND_HALF_UP).floatValue());
     public static int lSine = 1000;

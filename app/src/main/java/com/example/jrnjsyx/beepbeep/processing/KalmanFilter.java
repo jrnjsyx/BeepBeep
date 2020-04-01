@@ -27,7 +27,7 @@ public class KalmanFilter{
     private int distanceAbnormalCnt = 0;
     private int speedAbnormalCnt = 0;
     private float oldDistance;
-    private float oldSpeed;
+    private float oldSpeed = 0;
     public float unhandledDistance;
     public float unhandledSpeed;
     public int distanceCnt;
@@ -42,6 +42,7 @@ public class KalmanFilter{
 
     public float distance;
     public float speed;
+    private double acceleration = 0;
     //A 发出低频chirp信号
     public KalmanFilter(DecodeThread decodeThread){
         this.decodeThread = decodeThread;
@@ -81,28 +82,32 @@ public class KalmanFilter{
         Common.println("distanceCnt:"+distanceCnt);
         unhandledDistance = FlagVar.cSample * distanceCnt;
         unhandledSpeed = decodeThread.speed;
-        if(Math.abs(oldDistance+FlagVar.chirpIntervalTime*oldSpeed-unhandledDistance) > FlagVar.distanceThreshold && distanceAbnormalCnt < 4){
+
+        clippingFiltering();
+        kalmanFiltering();
+
+
+
+
+    }
+
+
+    private void clippingFiltering(){
+        if(Math.abs(oldDistance+FlagVar.chirpIntervalTime*oldSpeed-unhandledDistance) > Math.max(oldSpeed/100,1)*FlagVar.distanceThreshold && distanceAbnormalCnt < 4){
             distanceAbnormalCnt++;
         }
         else{
             distanceAbnormalCnt = 0;
             distance = unhandledDistance;
         }
-        if(Math.abs(oldSpeed-unhandledSpeed) > FlagVar.speedThreshold && speedAbnormalCnt < 4){
+        if(Math.abs(oldSpeed+acceleration*FlagVar.chirpIntervalTime-unhandledSpeed) > Math.max(acceleration/80,1)*FlagVar.speedThreshold && speedAbnormalCnt < 4){
             speedAbnormalCnt++;
         }
         else{
             speedAbnormalCnt = 0;
             speed = unhandledSpeed;
         }
-
-        if(FlagVar.currentRangingMode != FlagVar.BEEP_BEEP_MODE) {
-            computeUsingKalman();
-        }
-
-
-
-
+        acceleration = (speed-oldSpeed)/(FlagVar.chirpInterval*1.0/FlagVar.Fs);
     }
 
     public String getDataStr(){
@@ -112,7 +117,7 @@ public class KalmanFilter{
     }
 
 
-    private void computeUsingKalman(){
+    private void kalmanFiltering(){
         z.set(0,0,distance);
         z.set(1,0,speed);
         setF(1);
@@ -128,7 +133,7 @@ public class KalmanFilter{
             if(ratioForDistance < 0.5){
                 ratioForDistance = 0.5;
             }
-            double acceleration = (speed-oldSpeed)/(FlagVar.chirpInterval*1.0/FlagVar.Fs);
+
             Common.println("a:"+acceleration+"  speed:"+speed+"  oldSpeed:"+oldSpeed);
             double ratioForSpeed = curveMetricForSpeed[2]/(Math.abs(acceleration)-curveMetricForSpeed[0])+curveMetricForSpeed[1];
             if(ratioForSpeed < 0.5){
