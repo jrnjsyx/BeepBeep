@@ -58,7 +58,6 @@ import org.ejml.equation.Sequence;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -350,10 +349,10 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
             playThread = new PlayThread(Decoder.lowUpChirp);
         }
-        else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
+        else if(FlagVar.currentRangingMode == FlagVar.NEW_MOTION_BEEP_MODE){
 //            playThread = new PlayThread(Decoder.lowChirp);
             playThread = new PlayThread(Decoder.lowUpChirp);
-        }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
+        }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_MOTION_BEEP_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
@@ -376,10 +375,10 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         showToast("开始测距。");
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
             playThread = new PlayThread(Decoder.highDownChirp);
-        }else if(FlagVar.currentRangingMode == FlagVar.MY_NEW_MODE){
+        }else if(FlagVar.currentRangingMode == FlagVar.NEW_MOTION_BEEP_MODE){
 //            playThread = new PlayThread(Decoder.highDownChirp);
             playThread = new PlayThread(Decoder.highChirp);
-        }else if(FlagVar.currentRangingMode == FlagVar.MY_ORIGINAL_MODE){
+        }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_MOTION_BEEP_MODE){
             playThread = new PlayThread(Decoder.highChirp2);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
             playThread = new PlayThread(Decoder.highUpChirp);
@@ -883,8 +882,8 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         SubMenu beepModeSetting = menu.addSubMenu("Beep Mode Setting");
         beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.BEEP_BEEP_MODE,0,"Beep Beep Mode");
         beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.ORIGINAL_BEEP_BEEP_MODE,1,"Beep Beep Mode(o)");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.MY_ORIGINAL_MODE,1,"Motion Beep Mode(o)");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.MY_NEW_MODE,1,"Motion Beep Mode(n)");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.ORIGINAL_MOTION_BEEP_MODE,1,"Motion Beep Mode(o)");
+        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.NEW_MOTION_BEEP_MODE,1,"Motion Beep Mode(n)");
 
         return true;
     }
@@ -949,11 +948,11 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             case FlagVar.BEEP_BEEP_MODE:
                 FlagVar.currentRangingMode = FlagVar.BEEP_BEEP_MODE;
                 break;
-            case FlagVar.MY_ORIGINAL_MODE:
-                FlagVar.currentRangingMode = FlagVar.MY_ORIGINAL_MODE;
+            case FlagVar.ORIGINAL_MOTION_BEEP_MODE:
+                FlagVar.currentRangingMode = FlagVar.ORIGINAL_MOTION_BEEP_MODE;
                 break;
-            case FlagVar.MY_NEW_MODE: {
-                FlagVar.currentRangingMode = FlagVar.MY_NEW_MODE;
+            case FlagVar.NEW_MOTION_BEEP_MODE: {
+                FlagVar.currentRangingMode = FlagVar.NEW_MOTION_BEEP_MODE;
                 break;
             }
             case FlagVar.ORIGINAL_BEEP_BEEP_MODE:

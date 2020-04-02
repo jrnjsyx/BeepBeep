@@ -104,10 +104,10 @@ public class FlagVar {
     final static public int BEEP_MODE_SETTING = 12;
     final static public int BEEP_BEEP_MODE = 13;
     //Motion Beep best effect
-    final public static int MY_ORIGINAL_MODE = 14;
-    final public static int MY_NEW_MODE = 15;
+    final public static int ORIGINAL_MOTION_BEEP_MODE = 14;
+    final public static int NEW_MOTION_BEEP_MODE = 15;
     final public static int ORIGINAL_BEEP_BEEP_MODE = 16;
-    public static int currentRangingMode = MY_ORIGINAL_MODE;
+    public static int currentRangingMode = ORIGINAL_MOTION_BEEP_MODE;
 
 
     static public int currentSeriesMode = ALL_SERIES_MODE;
