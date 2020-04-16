@@ -3,17 +3,18 @@ package com.example.jrnjsyx.beepbeep.utils;
 import org.ejml.data.DMatrixRMaj;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 public class FlagVar {
 
     public static int Fs = 48000;
 
-    public static int bufferSize = 20480;
     public static float tChrip = 0.04f;
     public static int bChirp = 2000;
     public static int lowFStart = 16000;
-    public static int highFStart = 20500;
-    public static int bChirp2 = highFStart*bChirp/(bChirp+lowFStart);
+    public static int highFEnd = 20500;
+    public static int bChirp2 = highFEnd *bChirp/(bChirp+lowFStart);
     public static int chirpInterval = 4000*3;
 //    public static int chirpInterval = 19600;
     public static int chirpIntervalTime = chirpInterval/Fs;
@@ -26,7 +27,7 @@ public class FlagVar {
 //    public static int[] frequencies = {8500,8600,8700,8800,8900,9000,9100,9200,9300,9400};
     //该设置效果较好
 //    public static int lowFStart = 11000;
-//    public static int highFStart = 13000;
+//    public static int highFEnd = 13000;
 //    public static int playBufferSize = 4096*2;
 //    public static int recordBufferSize = 4096*2;
 
@@ -103,15 +104,27 @@ public class FlagVar {
     final static public int FREE_MODE = 11;
     final static public int BEEP_MODE_SETTING = 12;
     final static public int BEEP_BEEP_MODE = 13;
-    //Motion Beep best effect
+    //Motion Beep paper use
     final public static int ORIGINAL_MOTION_BEEP_MODE = 14;
     final public static int NEW_MOTION_BEEP_MODE = 15;
     final public static int ORIGINAL_BEEP_BEEP_MODE = 16;
-    public static int currentRangingMode = ORIGINAL_MOTION_BEEP_MODE;
+    final public static int LATEST_MOTION_BEEP_MODE = 17;
+    public static int currentRangingMode = LATEST_MOTION_BEEP_MODE;
 
 
     static public int currentSeriesMode = ALL_SERIES_MODE;
     static public int currentSelfAdaptionMode = SELF_ADAPTION_MODE;
 
     static public int currentShowMode = STRING_MODE;
+
+    static public Map<Integer,String> beepModeMap = new HashMap<Integer, String>();
+    static{
+        beepModeMap.put(BEEP_BEEP_MODE,"Beep Beep Mode");
+        beepModeMap.put(ORIGINAL_BEEP_BEEP_MODE,"Beep Beep Mode(o)");
+        beepModeMap.put(ORIGINAL_MOTION_BEEP_MODE,"Motion Beep Mode(o)");
+        beepModeMap.put(NEW_MOTION_BEEP_MODE,"Motion Beep Mode(n)");
+        beepModeMap.put(LATEST_MOTION_BEEP_MODE,"Motion Beep Mode(l)");
+
+    }
+
 }

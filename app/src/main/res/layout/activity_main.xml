@@ -16,7 +16,8 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:id="@+id/first_linear">
 
             <Button
                 android:id="@+id/a_button"
@@ -38,7 +39,8 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:id="@+id/second_linear">
             <Button
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -54,11 +56,41 @@
                 android:enabled="false"
                 android:text="send test info"/>
 
+
+
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:id="@+id/third_linear">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/record_beacon_button"
+                android:enabled="false"
+                android:text="beacon"/>
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/record_button"
+                android:enabled="false"
+                android:text="record"/>
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/play_button"
+                android:enabled="false"
+                android:text="play"/>
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/fouth_linear"
             >
 
             <Button

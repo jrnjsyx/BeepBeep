@@ -34,12 +34,20 @@ import android.widget.Toast;
 
 import com.example.jrnjsyx.beepbeep.R;
 import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
+import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread2;
+import com.example.jrnjsyx.beepbeep.physical.thread.PlayThreadTemplate;
 import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread;
+import com.example.jrnjsyx.beepbeep.physical.thread.RecordThread2;
+import com.example.jrnjsyx.beepbeep.physical.thread.RecordThreadTemplate;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
 import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThread;
+import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThreadForBeacon;
+import com.example.jrnjsyx.beepbeep.processing.thread.DecodeThreadTemplate;
+import com.example.jrnjsyx.beepbeep.processing.thread.DecodeWritingThread;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar2;
 import com.example.jrnjsyx.beepbeep.wifip2p.DirectActionListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.DirectBroadcastReceiver;
 import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
@@ -90,6 +98,13 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     TextView debugTextView;
     @BindView(R.id.textAll)
     LinearLayout textLinear;
+    @BindView(R.id.record_beacon_button)
+    Button recordBeaconButton;
+    @BindView(R.id.record_button)
+    Button recordButton;
+    @BindView(R.id.play_button)
+    Button playButton;
+
     private EditText q11EditText;
     private EditText q12EditText;
     private EditText q22EditText;
@@ -108,9 +123,9 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
 
 
-    private RecordThread recordThread;
-    private PlayThread playThread;
-    private DecodeThread decodeThread;
+    private RecordThreadTemplate recordThread;
+    private PlayThreadTemplate playThread;
+    private DecodeThreadTemplate decodeThread;
     private WifiP2pThread serverThread;
     private WifiP2pThread clientThread;
     private WifiP2pThread currentP2pThread;
@@ -227,9 +242,114 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                     afterEndButtonPress();
                     break;
                 }
+                case R.id.record_beacon_button:{
+                    afterRecordBeaconButtonPress();
+                    break;
+                }
+                case R.id.record_button:{
+                    afterRecordButtonPress();
+                    break;
+                }
+                case R.id.play_button:{
+                    afterPlayButtonPress();
+                    break;
+                }
             }
         }
     };
+
+    private boolean isRecordButtonPressed = false;
+    private boolean isPlayButtonPressed = false;
+    private DecodeThreadTemplate decodeWritingThread;
+
+    private void afterRecordButtonPress(){
+        if(isRecordButtonPressed == false) {
+            setButtonEnabled(recordBeaconButton,false);
+            setButtonEnabled(startButton,false);
+            isRecordButtonPressed = true;
+            if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE) {
+                //当bufferCnt>1时存在问题
+                decodeWritingThread = new DecodeWritingThread(1, FlagVar2.recordBufferSize);
+            }else{
+                decodeWritingThread = new DecodeWritingThread(1, FlagVar.recordBufferSize);
+            }
+            new Thread(decodeWritingThread).start();
+            recordThread = new RecordThread2(decodeWritingThread);
+            recordThread.start();
+            recordButton.setText("recording");
+        }else{
+            recordThread.stopRunning();
+            decodeWritingThread.stopRunning();
+            isRecordButtonPressed = false;
+            recordButton.setText("record");
+            setButtonEnabled(recordBeaconButton,true);
+            judgeCanStart();
+        }
+    }
+    private void afterPlayButtonPress(){
+
+
+        if(isPlayButtonPressed == false) {
+            setButtonEnabled(recordBeaconButton,false);
+            setButtonEnabled(startButton,false);
+            playButton.setText("playing");
+            Decoder.buildbeacons();
+            if (aMode) {
+                aModePlayThread();
+            } else if (bMode) {
+                bModePlayThread();
+            }
+            isPlayButtonPressed = true;
+        }else{
+            playThread.stopRunning();
+            isPlayButtonPressed = false;
+            playButton.setText("play");
+            setButtonEnabled(recordBeaconButton,true);
+            judgeCanStart();
+        }
+    }
+
+    private DecodeThreadTemplate decodeThreadForBeacon;
+    void afterRecordBeaconButtonPress(){
+        setButtonEnabled(recordBeaconButton,false);
+        setButtonEnabled(startButton,false);
+        setButtonEnabled(playButton,false);
+        setButtonEnabled(recordButton,false);
+        setLinearEnabled(mainLinear,false);
+
+        Decoder.buildbeacons();
+        if(aMode){
+            aModePlayThread();
+            decodeThreadForBeacon = new DecodeThreadForBeacon(true,decodeThreadStop);
+        }
+        else if(bMode){
+            bModePlayThread();
+            decodeThreadForBeacon = new DecodeThreadForBeacon(false,decodeThreadStop);
+        }
+        new Thread(decodeThreadForBeacon).start();
+        recordThread = new RecordThread2(decodeThreadForBeacon);
+        recordThread.start();
+    }
+
+    DecodeThreadForBeacon.DecodeThreadStop decodeThreadStop = new DecodeThreadForBeacon.DecodeThreadStop() {
+        @Override
+        public void stop() {
+            if(playThread != null) {
+                playThread.stopRunning();
+                Common.println("play stop.");
+            }
+            if(recordThread != null){
+                recordThread.stopRunning();
+                Common.println("record stop.");
+            }
+            setLinearEnabled(mainLinear,true);
+            setButtonEnabled(recordBeaconButton,true);
+            setButtonEnabled(playButton,true);
+            setButtonEnabled(recordButton,true);
+            judgeCanStart();
+        }
+    };
+
 
 
 
@@ -261,6 +381,9 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         connectReadyButton.setOnClickListener(onClickListener);
         mainLinear.setOnClickListener(onClickListener);
         endButton.setOnClickListener(onClickListener);
+        recordBeaconButton.setOnClickListener(onClickListener);
+        recordButton.setOnClickListener(onClickListener);
+        playButton.setOnClickListener(onClickListener);
 
         wifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(this, getMainLooper(), this);
@@ -279,12 +402,16 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             setButtonEnabled(aButton,true);
             setButtonEnabled(bButton,true);
             setButtonEnabled(connectButton,true);
+
             mainLinear.setClickable(false);
             isAppReady = true;
         }
     }
 
     private void afterAButtonPress(){
+        if(isRecordButtonPressed == true || isPlayButtonPressed == true){
+            return;
+        }
         //判断a按钮是否按下
         if(bButton.isEnabled() == true){
             bButton.setEnabled(false);
@@ -295,9 +422,13 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             bButton.setEnabled(true);
             afterAandBUnpressed();
         }
+
     }
 
     private void afterBButtonPress(){
+        if(isRecordButtonPressed == true || isPlayButtonPressed == true){
+            return;
+        }
         //判断b按钮是否按下
         if(aButton.isEnabled() == true){
             aButton.setEnabled(false);
@@ -308,6 +439,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
             bMode = false;
             afterAandBUnpressed();
         }
+
     }
 
     private void afterTestButtonPress(){
@@ -342,61 +474,89 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         }
     }
 
-    private void aModeStart(){
-        Common.println("aModeStart.");
-        currentP2pThread.setMessage(FlagVar.aModeStr);
-        showToast("开始测距。");
+    private void aModePlayThread(){
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
             playThread = new PlayThread(Decoder.lowUpChirp);
         }
         else if(FlagVar.currentRangingMode == FlagVar.NEW_MOTION_BEEP_MODE){
-//            playThread = new PlayThread(Decoder.lowChirp);
             playThread = new PlayThread(Decoder.lowUpChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_MOTION_BEEP_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
             playThread = new PlayThread(Decoder.lowUpChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            playThread = new PlayThread2(Decoder.lowUpChirp);
         }
         playThread.start();
+    }
+
+    private void aModeStart(){
+        Decoder.buildbeacons();
+        Common.println("aModeStart.");
+        currentP2pThread.setMessage(FlagVar.aModeStr);
+        showToast("开始测距。");
+        aModePlayThread();
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,true);
         new Thread(decodeThread).start();
-        recordThread = new RecordThread(decodeThread);
-        recordThread.start();
+        if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            recordThread = new RecordThread2(decodeThread);
+            recordThread.start();
+        }else {
+            recordThread = new RecordThread(decodeThread);
+            recordThread.start();
+        }
         setButtonEnabled(connectReadyButton,false);
         setButtonEnabled(startButton,false);
         setButtonEnabled(aButton,false);
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
+        setButtonEnabled(recordBeaconButton,false);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
         started = true;
     }
-    private void bModeStart(){
-        currentP2pThread.setMessage(FlagVar.bModeStr);
-        showToast("开始测距。");
+
+    private void bModePlayThread(){
         if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
             playThread = new PlayThread(Decoder.highDownChirp);
         }else if(FlagVar.currentRangingMode == FlagVar.NEW_MOTION_BEEP_MODE){
-//            playThread = new PlayThread(Decoder.highDownChirp);
-            playThread = new PlayThread(Decoder.highChirp);
+            playThread = new PlayThread(Decoder.highChirpConnected);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_MOTION_BEEP_MODE){
-            playThread = new PlayThread(Decoder.highChirp2);
+            playThread = new PlayThread(Decoder.highChirpAverage);
         }else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
             playThread = new PlayThread(Decoder.highUpChirp);
+        }else if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            playThread = new PlayThread2(Decoder.highDownChirp);
         }
-
         playThread.start();
+    }
+
+    private void bModeStart(){
+        Decoder.buildbeacons();
+        currentP2pThread.setMessage(FlagVar.bModeStr);
+        showToast("开始测距。");
+        bModePlayThread();
+
         decodeThread = new DecodeThread(myHandler,currentP2pThread,playThread,false);
         new Thread(decodeThread).start();
-        recordThread = new RecordThread(decodeThread);
-        recordThread.start();
+
+        if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            recordThread = new RecordThread2(decodeThread);
+            recordThread.start();
+        }else {
+            recordThread = new RecordThread(decodeThread);
+            recordThread.start();
+        }
         setButtonEnabled(connectReadyButton,false);
         setButtonEnabled(startButton,false);
         setButtonEnabled(aButton,false);
         setButtonEnabled(bButton,false);
         setButtonEnabled(endButton,true);
+        setButtonEnabled(recordBeaconButton,false);
         currentP2pThread.removeListener(FlagVar.rangingStartStr);
         started = true;
     }
+
+
 
     private NetworkMsgListener rangingStartlistener = new NetworkMsgListener() {
         @Override
@@ -427,21 +587,21 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     };
 
     private void judgeCanStart(){
-            if(isConnected && (aMode || bMode)){
-                setButtonEnabled(startButton,true);
-                Common.println("judgeCanStart.");
-                currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
-                NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
-                    @Override
-                    public void handleMsg(String msg) {
-                        if(msg.equals(FlagVar.rangingEndStr)) {
-                            currentP2pThread.setMessage(FlagVar.rangingEndStr);
-                            stopRanging();
-                            currentP2pThread.removeListener(FlagVar.rangingEndStr);
+        if(isConnected && (aMode || bMode)){
+            setButtonEnabled(startButton,true);
+            Common.println("judgeCanStart.");
+            currentP2pThread.addListener(FlagVar.rangingStartStr,rangingStartlistener);
+            NetworkMsgListener rangingEndListener = new NetworkMsgListener() {
+                @Override
+                public void handleMsg(String msg) {
+                    if(msg.equals(FlagVar.rangingEndStr)) {
+                        currentP2pThread.setMessage(FlagVar.rangingEndStr);
+                        stopRanging();
+                        currentP2pThread.removeListener(FlagVar.rangingEndStr);
 
-                        }
                     }
-                };
+                }
+            };
             currentP2pThread.addListener(FlagVar.rangingEndStr,rangingEndListener);
         }else{
             setButtonEnabled(startButton,false);
@@ -539,11 +699,19 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
     private void afterAorBPress(){
         connectReadyButton.setEnabled(true);
         judgeCanStart();
+        if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            setButtonEnabled(recordBeaconButton, true);
+        }
+        setButtonEnabled(playButton,true);
+        setButtonEnabled(recordButton,true);
     }
 
     private void afterAandBUnpressed(){
         connectReadyButton.setEnabled(false);
         judgeCanStart();
+        setButtonEnabled(recordBeaconButton, false);
+        setButtonEnabled(playButton,false);
+        setButtonEnabled(recordButton,false);
 
     }
 
@@ -662,22 +830,31 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
 
     private void setButtonEnabled(Button bt,boolean enabled){
         if (Looper.getMainLooper().getThread() != Thread.currentThread()) {
-            this.runOnUiThread(new ButtonEnabledThread(bt,enabled));
+            this.runOnUiThread(new ViewEnabledThread(bt,enabled));
         }else{
             bt.setEnabled(enabled);
         }
     }
 
-    private class ButtonEnabledThread implements Runnable{
-        Button bt;
+    private void setLinearEnabled(LinearLayout linearLayout, boolean enabled){
+        if (Looper.getMainLooper().getThread() != Thread.currentThread()) {
+            this.runOnUiThread(new ViewEnabledThread(linearLayout,enabled));
+        }else{
+            linearLayout.setEnabled(enabled);
+        }
+
+    }
+
+    private class ViewEnabledThread implements Runnable{
+        View view;
         boolean enabled;
-        public ButtonEnabledThread(Button bt, boolean enabled){
-            this.bt = bt;
+        public ViewEnabledThread(View view, boolean enabled){
+            this.view = view;
             this.enabled = enabled;
         }
         @Override
         public void run() {
-            bt.setEnabled(enabled);
+            view.setEnabled(enabled);
         }
     }
 
@@ -763,6 +940,7 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         setButtonEnabled(bButton,true);
         setButtonEnabled(endButton,false);
         setButtonEnabled(startButton,false);
+
         isConnected = false;
         started = false;
         judgeCanStart();
@@ -780,14 +958,15 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         }
         if(decodeThread != null) {
             if(Common.isDebug) {
-                Common.saveShorts(decodeThread.savedData, "savedData");
-                Common.saveStrings(decodeThread.savedMainData,"savedMainData");
-                Common.println("savedMainData size:"+decodeThread.savedMainData.size());
-                String foundCntStr = "lowFoundCnt:"+decodeThread.lowFoundCnt+
-                        "\nhighFoundCnt:"+decodeThread.highFoundCnt+
-                        "\nmLoopCounter:"+decodeThread.mLoopCounter+
-                        "\nfrontFoundCnt:"+decodeThread.frontFoundCnt+
-                        "\nbackFoundCnt:"+decodeThread.backFoundCnt;
+                DecodeThread decodeThread2 = (DecodeThread)decodeThread;
+                Common.saveShorts(decodeThread2.savedData, "savedData",false);
+                Common.saveStrings(decodeThread2.savedMainData,"savedMainData");
+                Common.println("savedMainData size:"+decodeThread2.savedMainData.size());
+                String foundCntStr = "lowFoundCnt:"+decodeThread2.lowFoundCnt+
+                        "\nhighFoundCnt:"+decodeThread2.highFoundCnt+
+                        "\nmLoopCounter:"+decodeThread2.mLoopCounter+
+                        "\nfrontFoundCnt:"+decodeThread2.frontFoundCnt+
+                        "\nbackFoundCnt:"+decodeThread2.backFoundCnt;
                 Common.saveString(foundCntStr,"savedFoundCnt");
                 Message msg = new Message();
                 msg.what = FlagVar.BEEP_MAIN_TEXT_END;
@@ -879,41 +1058,49 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
         SubMenu selfAdaptionSettingMenu = menu.addSubMenu("Self Adaption Setting");
         selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.SELF_ADAPTION_MODE,0,"Self Adaption Mode");
         selfAdaptionSettingMenu.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.FREE_MODE,1,"Free Mode");
-        SubMenu beepModeSetting = menu.addSubMenu("Beep Mode Setting");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.BEEP_BEEP_MODE,0,"Beep Beep Mode");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.ORIGINAL_BEEP_BEEP_MODE,1,"Beep Beep Mode(o)");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.ORIGINAL_MOTION_BEEP_MODE,1,"Motion Beep Mode(o)");
-        beepModeSetting.add(FlagVar.SELF_ADAPTION_SETTING,FlagVar.NEW_MOTION_BEEP_MODE,1,"Motion Beep Mode(n)");
+
+        beepModeSetting = menu.addSubMenu("Beep Mode Setting");
+        beepModeSetting.add(FlagVar.BEEP_MODE_SETTING, FlagVar.BEEP_BEEP_MODE, 1,FlagVar.beepModeMap.get(FlagVar.BEEP_BEEP_MODE));
+        beepModeSetting.add(FlagVar.BEEP_MODE_SETTING, FlagVar.ORIGINAL_BEEP_BEEP_MODE, 1, FlagVar.beepModeMap.get(FlagVar.ORIGINAL_BEEP_BEEP_MODE));
+        beepModeSetting.add(FlagVar.BEEP_MODE_SETTING, FlagVar.ORIGINAL_MOTION_BEEP_MODE, 1, FlagVar.beepModeMap.get(FlagVar.ORIGINAL_MOTION_BEEP_MODE));
+        beepModeSetting.add(FlagVar.BEEP_MODE_SETTING, FlagVar.NEW_MOTION_BEEP_MODE, 1, FlagVar.beepModeMap.get(FlagVar.NEW_MOTION_BEEP_MODE));
+        beepModeSetting.add(FlagVar.BEEP_MODE_SETTING, FlagVar.LATEST_MOTION_BEEP_MODE, 1, FlagVar.beepModeMap.get(FlagVar.LATEST_MOTION_BEEP_MODE));
+        beepModeSetting.findItem(FlagVar.currentRangingMode).setEnabled(false);
 
         return true;
     }
+
+
+    private SubMenu beepModeSetting;
 
 
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
-            case FlagVar.GRAPH_MODE:
+            case FlagVar.GRAPH_MODE: {
                 FlagVar.currentShowMode = FlagVar.GRAPH_MODE;
                 distanceGraph.setVisibility(View.VISIBLE);
                 speedGraph.setVisibility(View.VISIBLE);
                 textLinear.setVisibility(View.GONE);
                 break;
-            case FlagVar.STRING_MODE:
+            }
+            case FlagVar.STRING_MODE: {
                 FlagVar.currentShowMode = FlagVar.STRING_MODE;
                 distanceGraph.setVisibility(View.GONE);
                 speedGraph.setVisibility(View.GONE);
                 textLinear.setVisibility(View.VISIBLE);
                 break;
-            case FlagVar.METRIC_MODE:
-                if(FlagVar.currentSelfAdaptionMode == FlagVar.FREE_MODE) {
+            }
+            case FlagVar.METRIC_MODE: {
+                if (FlagVar.currentSelfAdaptionMode == FlagVar.FREE_MODE) {
                     LoginDialog();
-                }
-                else{
+                } else {
                     showToast("请取消自适应模式");
                 }
                 break;
-            case FlagVar.UNHANDLED_SERIES_MODE:
+            }
+            case FlagVar.UNHANDLED_SERIES_MODE: {
                 FlagVar.currentShowMode = FlagVar.UNHANDLED_SERIES_MODE;
                 distanceGraph.removeAllSeries();
                 distanceGraph.addSeries(unhandledDistanceSeries);
@@ -921,14 +1108,16 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 speedGraph.removeAllSeries();
                 speedGraph.addSeries(unhandledSpeedSeries);
                 break;
-            case FlagVar.HANDLED_SERIES_MODE:
+            }
+            case FlagVar.HANDLED_SERIES_MODE: {
                 FlagVar.currentShowMode = FlagVar.HANDLED_SERIES_MODE;
                 distanceGraph.removeAllSeries();
                 distanceGraph.addSeries(distanceSeries);
                 speedGraph.removeAllSeries();
                 speedGraph.addSeries(speedSeries);
                 break;
-            case FlagVar.ALL_SERIES_MODE:
+            }
+            case FlagVar.ALL_SERIES_MODE: {
                 FlagVar.currentShowMode = FlagVar.HANDLED_SERIES_MODE;
                 distanceGraph.removeAllSeries();
                 distanceGraph.addSeries(distanceSeries);
@@ -938,30 +1127,47 @@ public class MainActivity extends AppCompatActivity implements DirectActionListe
                 speedGraph.addSeries(speedSeries);
                 speedGraph.addSeries(unhandledSpeedSeries);
                 break;
-            case FlagVar.SELF_ADAPTION_MODE:
+            }
+            case FlagVar.SELF_ADAPTION_MODE: {
                 FlagVar.currentSelfAdaptionMode = FlagVar.SELF_ADAPTION_MODE;
                 break;
+            }
             case FlagVar.FREE_MODE: {
                 FlagVar.currentSelfAdaptionMode = FlagVar.FREE_MODE;
                 break;
             }
-            case FlagVar.BEEP_BEEP_MODE:
-                FlagVar.currentRangingMode = FlagVar.BEEP_BEEP_MODE;
-                break;
-            case FlagVar.ORIGINAL_MOTION_BEEP_MODE:
-                FlagVar.currentRangingMode = FlagVar.ORIGINAL_MOTION_BEEP_MODE;
-                break;
-            case FlagVar.NEW_MOTION_BEEP_MODE: {
-                FlagVar.currentRangingMode = FlagVar.NEW_MOTION_BEEP_MODE;
+            case FlagVar.BEEP_BEEP_MODE: {
+                changeBeepMode(FlagVar.BEEP_BEEP_MODE);
                 break;
             }
-            case FlagVar.ORIGINAL_BEEP_BEEP_MODE:
-                FlagVar.currentRangingMode = FlagVar.ORIGINAL_BEEP_BEEP_MODE;
+            case FlagVar.ORIGINAL_MOTION_BEEP_MODE: {
+                changeBeepMode(FlagVar.ORIGINAL_MOTION_BEEP_MODE);
                 break;
+            }
+            case FlagVar.NEW_MOTION_BEEP_MODE: {
+                changeBeepMode(FlagVar.NEW_MOTION_BEEP_MODE);
+                break;
+            }
+            case FlagVar.ORIGINAL_BEEP_BEEP_MODE: {
+                changeBeepMode(FlagVar.ORIGINAL_BEEP_BEEP_MODE);
+                break;
+            }
+            case FlagVar.LATEST_MOTION_BEEP_MODE: {
+                changeBeepMode(FlagVar.LATEST_MOTION_BEEP_MODE);
+                break;
+            }
 
 
         }
         return true;
+    }
+
+    private void changeBeepMode(int beepMode){
+        if (started == false) {
+            beepModeSetting.findItem(FlagVar.currentRangingMode).setEnabled(true);
+            FlagVar.currentRangingMode = beepMode;
+            beepModeSetting.findItem(FlagVar.currentRangingMode).setEnabled(false);
+        }
     }
 
 

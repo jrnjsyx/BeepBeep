@@ -1,8 +1,8 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
 import com.example.jrnjsyx.beepbeep.physical.SignalGenerator;
-import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar2;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 
 import java.util.LinkedList;
@@ -11,14 +11,37 @@ import java.util.List;
 public class Decoder {
 
     public static short[] lowUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
-    public static short[] highDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart);
+    public static short[] highDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFEnd);
     public static short[] lowDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart+FlagVar.bChirp);
-    public static short[] highUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFStart-FlagVar.bChirp2);
-    public static short[] lowChirp = SignalGenerator.addSig(lowUpChirp,lowDownChirp);
-    public static short[] highChirp = SignalGenerator.addSig(highDownChirp,highUpChirp);
+    public static short[] highUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFEnd -FlagVar.bChirp2);
+    public static short[] lowChirpAverage = SignalGenerator.sigAverage(lowUpChirp,lowDownChirp);
+    public static short[] highChirpConnected = SignalGenerator.addSig(highDownChirp,highUpChirp);
     public static short[] sines = SignalGenerator.multipleSineWaveGenerator(FlagVar.frequencies,FlagVar.Fs,FlagVar.lSine);
     public static short[] chirpAndSine = SignalGenerator.addSig(highDownChirp,sines);
-    public static short[] highChirp2 = SignalGenerator.sigAverage(highDownChirp,highUpChirp);
+    public static short[] highChirpAverage = SignalGenerator.sigAverage(highDownChirp,highUpChirp);
+
+    static {
+        buildbeacons();
+    }
+
+    public static void buildbeacons(){
+        if(FlagVar.currentRangingMode != FlagVar.LATEST_MOTION_BEEP_MODE) {
+            lowUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart);
+            highDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFEnd);
+            lowDownChirp = SignalGenerator.downChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp, FlagVar.lowFStart + FlagVar.bChirp);
+            highUpChirp = SignalGenerator.upChirpGenerator(FlagVar.Fs, FlagVar.tChrip, FlagVar.bChirp2, FlagVar.highFEnd - FlagVar.bChirp2);
+        }else{
+            lowUpChirp = SignalGenerator.upChirpGenerator(FlagVar2.Fs, FlagVar2.tChrip, FlagVar2.bChirp, FlagVar2.lowFStart);
+            highDownChirp = SignalGenerator.downChirpGenerator(FlagVar2.Fs, FlagVar2.tChrip, FlagVar2.bChirp2, FlagVar2.highFEnd);
+            lowDownChirp = SignalGenerator.downChirpGenerator(FlagVar2.Fs, FlagVar2.tChrip, FlagVar2.bChirp, FlagVar2.lowFStart + FlagVar2.bChirp);
+            highUpChirp = SignalGenerator.upChirpGenerator(FlagVar2.Fs, FlagVar2.tChrip, FlagVar2.bChirp2, FlagVar2.highFEnd - FlagVar2.bChirp2);
+        }
+        lowChirpAverage = SignalGenerator.sigAverage(lowUpChirp,lowDownChirp);
+        highChirpConnected = SignalGenerator.addSig(highDownChirp,highUpChirp);
+        sines = SignalGenerator.multipleSineWaveGenerator(FlagVar.frequencies,FlagVar.Fs,FlagVar.lSine);
+        chirpAndSine = SignalGenerator.addSig(highDownChirp,sines);
+        highChirpAverage = SignalGenerator.sigAverage(highDownChirp,highUpChirp);
+    }
 
 
 

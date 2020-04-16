@@ -59,11 +59,22 @@ public class Common {
 
     public static final String SDPATH = Environment.getExternalStorageDirectory()+ File.separator;//"/sdcard/";
 
-    public static void saveShorts(short[] data, String name){
+    public static void createEmptyFile(String name){
+        File file = new File(SDPATH+name+".txt");
+        try {
+            file.delete();
+            file.createNewFile();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
+
+    public static void saveShorts(short[] data, String name, boolean append){
         File file = new File(SDPATH+name+".txt");
         FileWriter fw = null;
         try {
-            fw = new FileWriter(file);
+            fw = new FileWriter(file,append);
             if(!file.exists())
                 file.createNewFile();
             for(int i = 0; i < data.length ; i++){

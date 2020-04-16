@@ -1,5 +1,7 @@
 package com.example.jrnjsyx.beepbeep.processing;
 
+import com.example.jrnjsyx.beepbeep.utils.FlagVar2;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -201,5 +203,32 @@ public class Algorithm {
         ret[2] = a;
         return ret;
 
+    }
+
+
+    public static float[] fftBandPassFilter(float[] fft, int lowF, int highF, int spaceF){
+        int len = fft.length/2;
+        float[] retFFT = new float[fft.length];
+
+
+        int low = (lowF-spaceF) * len / FlagVar2.Fs;
+        int high = (highF+spaceF) * len / FlagVar2.Fs;
+        if(low>0 && low<high && high<len/2) {
+            int low2 = len-high;
+            int high2 = len-low;
+            for (int i=0;i<2*len;i++){
+                if(i>=2*low && i<=2*high+1){
+                    retFFT[i] = fft[i];
+                }else if(i>=2*low2 && i<=2*high2+1){
+                    retFFT[i] = fft[i];
+                }else{
+                    retFFT[i] = 0;
+                }
+            }
+            return retFFT;
+        }else{
+            System.out.println("fftlen:"+len+"  low:"+low+"  high:"+high);
+            throw new RuntimeException("输入数据非法。");
+        }
     }
 }

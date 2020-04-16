@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 
-import com.example.jrnjsyx.beepbeep.physical.thread.PlayThread;
+import com.example.jrnjsyx.beepbeep.physical.thread.PlayThreadTemplate;
 import com.example.jrnjsyx.beepbeep.processing.Algorithm;
 import com.example.jrnjsyx.beepbeep.processing.Decoder;
 import com.example.jrnjsyx.beepbeep.processing.IndexMaxVarInfo;
@@ -12,6 +12,7 @@ import com.example.jrnjsyx.beepbeep.processing.KalmanFilter;
 import com.example.jrnjsyx.beepbeep.processing.SpeedInfo;
 import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar2;
 import com.example.jrnjsyx.beepbeep.utils.JniUtils;
 import com.example.jrnjsyx.beepbeep.wifip2p.NetworkMsgListener;
 import com.example.jrnjsyx.beepbeep.wifip2p.thread.WifiP2pThread;
@@ -20,13 +21,11 @@ import java.util.LinkedList;
 import java.util.List;
 
 
-public class DecodeThread extends Decoder implements Runnable {
+public class DecodeThread extends DecodeThreadTemplate  {
 
     private static final String TAG = "DecodeThread";
-    private boolean isThreadRunning = true;
     public Integer mLoopCounter = 0;
     private Handler mHandler;
-    public List<short[]> samplesList;
     public List<Integer> lowChirpPositions;
     public List<Integer> highChirpPositions;
     public List<Integer> remoteLowChirpPositions;
@@ -38,8 +37,8 @@ public class DecodeThread extends Decoder implements Runnable {
     public int remoteLowChirpPosition;
     public int remoteHighChirpPosition;
     public int remoteHighUpChirpPosition;
-    private int dataSavedSize = 409600;
-    private PlayThread playThread;
+    private int dataSavedSize = 480000;
+    private PlayThreadTemplate playThread;
     private boolean isChirpFrequencyLow = false;
     private boolean isAdjusted = false;
     private int diff = 0;
@@ -76,10 +75,9 @@ public class DecodeThread extends Decoder implements Runnable {
 
     private IndexMaxVarInfo mIndexMaxVarInfo;
 
-    public DecodeThread(Handler mHandler, WifiP2pThread currentP2pThread,PlayThread playThread,boolean isChirpFrequencyLow){
+    public DecodeThread(Handler mHandler, WifiP2pThread currentP2pThread, PlayThreadTemplate playThread, boolean isChirpFrequencyLow){
         kalmanFilter = new KalmanFilter(this);
         mIndexMaxVarInfo = new IndexMaxVarInfo();
-        samplesList = new LinkedList<short[]>();
         lowChirpPositions = new LinkedList<Integer>();
         highChirpPositions = new LinkedList<Integer>();
         remoteLowChirpPositions = new LinkedList<Integer>();
@@ -87,28 +85,21 @@ public class DecodeThread extends Decoder implements Runnable {
         this.mHandler = mHandler;
         this.playThread = playThread;
         this.isChirpFrequencyLow = isChirpFrequencyLow;
-        initialize(FlagVar.recordBufferSize);
+        if(FlagVar.currentRangingMode != FlagVar.LATEST_MOTION_BEEP_MODE) {
+            initialize(FlagVar.recordBufferSize);
+        }else{
+            initialize(FlagVar2.recordBufferSize);
+        }
         this.currentP2pThread = currentP2pThread;
         currentP2pThread.addListener(FlagVar.recordStr,networkMsgListener);
 
     }
 
-    /**
-     * copy the samples from the audio buffer
-     * @param s - input coming from the audio buffer
-     */
-    public void fillSamples(short[] s){
-
-        synchronized (samplesList) {
-            samplesList.add(s);
-        }
-
-    }
 
     @Override
     public void run() {
         try {
-            while (isThreadRunning) {
+            while (isRunning) {
                 if(FlagVar.currentRangingMode == FlagVar.BEEP_BEEP_MODE) {
                     runOnNewBeepBeepPerTurn();
                 }
@@ -116,12 +107,16 @@ public class DecodeThread extends Decoder implements Runnable {
                 else if(FlagVar.currentRangingMode == FlagVar.NEW_MOTION_BEEP_MODE){
                     runOnNewMotionBeepPerTurn();
                 }
-                //best performance
+                //motion beep paper use
                 else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_MOTION_BEEP_MODE){
                     runOnOriginalMotionBeepPerTurn();
                 }
                 else if(FlagVar.currentRangingMode == FlagVar.ORIGINAL_BEEP_BEEP_MODE){
                     runOnOriginalBeepbeepPerTurn();
+                }
+
+                else if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+                    runOnLatestMotionBeepPerTurn();
                 }
             }
         }catch (Exception e){
@@ -140,26 +135,35 @@ public class DecodeThread extends Decoder implements Runnable {
         return false;
     }
 
-    private void constructBuffer(){
-        synchronized (samplesList) {
-//            System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr-FlagVar.lSine,buffer,
-//                    0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr+FlagVar.lSine);
-//            System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr+FlagVar.lSine,processBufferSize-FlagVar.lSine);
-//            System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr-FlagVar.lSine,bufferAll,
-//                    0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr+FlagVar.lSine);
-//            System.arraycopy(samplesList.get(1),0,bufferAll,FlagVar.lChirp+FlagVar.startBeforeMaxCorr+FlagVar.lSine,processBufferSize);
+    private void constructBuffer(boolean useFlagVar){
+        if(useFlagVar) {
+            synchronized (samplesList) {
 
-            System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,buffer,
-                    0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
-            System.arraycopy(samplesList.get(1),0,buffer,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
-//            System.arraycopy(samplesList.get(0),processBufferSize-FlagVar.lChirp-FlagVar.startBeforeMaxCorr,bufferAll,
-//                    0,FlagVar.lChirp+FlagVar.startBeforeMaxCorr);
-//            System.arraycopy(samplesList.get(1),0,bufferAll,FlagVar.lChirp+FlagVar.startBeforeMaxCorr,processBufferSize);
-            samplesList.remove(0);
+                System.arraycopy(samplesList.get(0), processBufferSize - FlagVar.lChirp - FlagVar.startBeforeMaxCorr, buffer,
+                        0, FlagVar.lChirp + FlagVar.startBeforeMaxCorr);
+                System.arraycopy(samplesList.get(1), 0, buffer, FlagVar.lChirp + FlagVar.startBeforeMaxCorr, processBufferSize);
+                samplesList.remove(0);
 
+            }
+            if (mLoopCounter < dataSavedSize / processBufferSize && Common.isDebug) {
+                System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
+            }
         }
-        if(mLoopCounter<dataSavedSize/processBufferSize&& Common.isDebug) {
-            System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar.recordBufferSize, processBufferSize);
+        else{
+            synchronized (samplesList) {
+
+                System.arraycopy(samplesList.get(0), processBufferSize - FlagVar2.lChirp - FlagVar2.startBeforeMaxCorr, buffer,
+                        0, FlagVar2.lChirp + FlagVar2.startBeforeMaxCorr);
+                System.arraycopy(samplesList.get(1), 0, buffer, FlagVar2.lChirp + FlagVar2.startBeforeMaxCorr, processBufferSize);
+                samplesList.remove(0);
+
+            }
+            if (mLoopCounter < dataSavedSize / processBufferSize && Common.isDebug) {
+                System.arraycopy(samplesList.get(0), 0, savedData, mLoopCounter * FlagVar2.recordBufferSize, processBufferSize);
+            }
+        }
+        synchronized (mLoopCounter) {
+            mLoopCounter++;
         }
     }
 
@@ -219,11 +223,8 @@ public class DecodeThread extends Decoder implements Runnable {
             if(skip()){
                 return;
             }
-            constructBuffer();
+            constructBuffer(true);
 
-            synchronized (mLoopCounter) {
-                mLoopCounter++;
-            }
             analysisDataForNewBeep();
 
             saveAndSendLowPos(lowIndex);
@@ -312,7 +313,7 @@ public class DecodeThread extends Decoder implements Runnable {
             highDiff = highDiff - FlagVar.lChirp;
         }
         highDiff = Algorithm.moveIntoRange(highDiff,0-FlagVar.chirpInterval/2,FlagVar.chirpInterval);
-        speed = (float) FlagVar.bChirp2*highDiff*FlagVar.soundSpeed/(FlagVar.highFStart-FlagVar.bChirp2/2)/FlagVar.lChirp/2;
+        speed = (float) FlagVar.bChirp2*highDiff*FlagVar.soundSpeed/(FlagVar.highFEnd -FlagVar.bChirp2/2)/FlagVar.lChirp/2;
 
         highIndex = infoHighDown.index;
         highUpIndex = infoHighUp.index;
@@ -394,17 +395,48 @@ public class DecodeThread extends Decoder implements Runnable {
         }
         calculatePosition();
     }
+
+
+
+
+    private void analysisDataForLatestMotionBeep(){
+        fft = JniUtils.fft(normalization(buffer), chirpCorrLen);
+        float[] fftLow = Algorithm.fftBandPassFilter(fft,FlagVar2.lowFStart,FlagVar2.lowFEnd,FlagVar2.spaceF);
+        int lowUpIndex = getIndexMaxVarInfoFromFDomain2(fft, lowUpChirpFFT).index;
+        int lowDownIndex = getIndexMaxVarInfoFromFDomain2(fft, lowDownChirpFFT).index;
+        lowIndex = lowUpIndex;
+//        lowIndex = (lowUpIndex+lowDownIndex)/2;
+
+
+        float[] fftHigh = Algorithm.fftBandPassFilter(fft,FlagVar2.highFStart,FlagVar2.highFEnd,FlagVar2.spaceF);
+        int highUpIndex = getIndexMaxVarInfoFromFDomain2(fft, highUpChirpFFT).index;
+        int highDownIndex = getIndexMaxVarInfoFromFDomain2(fft, highDownChirpFFT).index;
+        highIndex = highDownIndex;
+//        highIndex = (highUpIndex+highDownIndex)/2;
+        calculatePosition();
+
+
+
+    }
+
+    private void runOnLatestMotionBeepPerTurn(){
+        if (samplesList.size() >= 2) {
+            constructBuffer(false);
+        }
+        analysisDataForLatestMotionBeep();
+        saveAndSendLowPos(lowChirpPosition);
+        saveAndSendHighPos(highChirpPosition);
+        computeAndSendBeepMainMsg();
+
+    }
     //speed estimation by computing dopller effects of chirp signal.
     private void runOnNewMotionBeepPerTurn(){
         if (samplesList.size() >= 2) {
             if(skip()){
                 return;
             }
-            constructBuffer();
+            constructBuffer(true);
 
-            synchronized (mLoopCounter) {
-                mLoopCounter++;
-            }
             analysisDataForNewMotionBeep();
 //            saveAndSendLowPos(lowIndex);
 //            saveAndSendHighPos(highIndex);
@@ -437,11 +469,8 @@ public class DecodeThread extends Decoder implements Runnable {
             if(skip()){
                 return;
             }
-            constructBuffer();
+            constructBuffer(true);
 
-            synchronized (mLoopCounter) {
-                mLoopCounter++;
-            }
             analysisDataForOriginalMotionBeep();
             saveAndSendLowPos(lowChirpPosition);
             saveAndSendHighPos(highChirpPosition);
@@ -505,11 +534,8 @@ public class DecodeThread extends Decoder implements Runnable {
             if(skip()){
                 return;
             }
-            constructBuffer();
+            constructBuffer(true);
 
-            synchronized (mLoopCounter) {
-                mLoopCounter++;
-            }
             analysisDataForNewBeep();
             analysisDataForBecconDetection();
 
@@ -540,8 +566,16 @@ public class DecodeThread extends Decoder implements Runnable {
         if(!isChirpFrequencyLow){
             unprocessedDistanceCnt = 0-unprocessedDistanceCnt;
         }
-        int distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,FlagVar.chirpInterval);
-        float distance = FlagVar.cSample * distanceCnt;
+        int distanceCnt = 0;
+        float distance = 0;
+        if(FlagVar.currentRangingMode == FlagVar.LATEST_MOTION_BEEP_MODE){
+            distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt,0,FlagVar2.chirpInterval);
+            distance = FlagVar2.cSample * distanceCnt;
+        }else {
+            distanceCnt = Algorithm.moveIntoRange(unprocessedDistanceCnt, 0, FlagVar.chirpInterval);
+            distance = FlagVar.cSample * distanceCnt;
+        }
+
         Common.println("distanceCnt:"+distanceCnt+"  distance:"+distance);
         Message msg = new Message();
         msg.what = FlagVar.BEEP_MAIN_TEXT;
@@ -559,11 +593,8 @@ public class DecodeThread extends Decoder implements Runnable {
             if(skip()){
                 return;
             }
-            constructBuffer();
+            constructBuffer(true);
 
-            synchronized (mLoopCounter) {
-                mLoopCounter++;
-            }
             analysisDataForOriginalBeep();
             analysisDataForBecconDetection();
 
@@ -747,15 +778,6 @@ public class DecodeThread extends Decoder implements Runnable {
 
 
 
-    /**
-     * shutdown the thread
-     */
-    public void stopRunning() {
-        synchronized (this){
-            isThreadRunning = false;
-            //Thread.currentThread().join();
-        }
-    }
 
     private NetworkMsgListener networkMsgListener = new NetworkMsgListener() {
         @Override

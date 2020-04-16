@@ -4,46 +4,50 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 
-import com.example.jrnjsyx.beepbeep.processing.Decoder;
-import com.example.jrnjsyx.beepbeep.utils.Common;
 import com.example.jrnjsyx.beepbeep.utils.FlagVar;
+import com.example.jrnjsyx.beepbeep.utils.FlagVar2;
 
-import java.util.Arrays;
-
-public class PlayThread extends PlayThreadTemplate {
+public class PlayThread2 extends PlayThreadTemplate {
 
     /*
     This thread is used to play audio samples in PCM format
      */
 
-    private static int minBufferSize = 0;
-    private short[] buffer = new short[FlagVar.playBufferSize];
+    private int minBufferSize = 0;
+    private short[] buffer;
+    private int playBufferCnt = 1;
+    int playBufferSize = FlagVar2.playBufferSize;
     private AudioTrack audiotrack;
     private Boolean needAdjust = false;
     private short[] adjustSamples;
 
     private final String TAG = "PlayThread";
-    static {
+    {
         minBufferSize = AudioTrack.getMinBufferSize(
-                FlagVar.Fs,
+                FlagVar2.Fs,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
-        if(minBufferSize > FlagVar.playBufferSize){
-            throw new RuntimeException("playBufferSize should be larger than minBufferSize.");
+
+        while (minBufferSize > playBufferSize){
+            playBufferSize += FlagVar2.playBufferSize;
+            playBufferCnt++;
         }
+        buffer = new short[playBufferSize];
     }
 
-    public PlayThread(short[] buffer){
+    public PlayThread2(short[] buffer){
 
         // get the minimum buffer size
 
-        if(buffer.length > FlagVar.playBufferSize){
+        if(buffer.length > playBufferSize){
             throw new RuntimeException("playBufferSize should be larger than buffer length.");
         }
         for(int i=0;i<this.buffer.length;i++){
             this.buffer[i] = 0;
         }
-        System.arraycopy(buffer,0,this.buffer,0,buffer.length);
+        for(int i=0;i<playBufferCnt;i++) {
+            System.arraycopy(buffer, 0, this.buffer, i*FlagVar2.playBufferSize, buffer.length);
+        }
     }
 
     public void adjustSample(int cnt){
@@ -69,7 +73,7 @@ public class PlayThread extends PlayThreadTemplate {
         // initialize the audiotrack
         audiotrack = new AudioTrack(
                 AudioManager.STREAM_MUSIC,
-                FlagVar.Fs,
+                FlagVar2.Fs,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
                 minBufferSize,
@@ -108,10 +112,4 @@ public class PlayThread extends PlayThreadTemplate {
         }
     }
 
-    /*
-    shut down the thread
-     */
-    public void stopRunning(){
-        isRunning = false;
-    }
 }
